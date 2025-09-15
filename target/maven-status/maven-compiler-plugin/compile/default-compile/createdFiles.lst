@@ -1,0 +1,6 @@
+com/jmtortolero/calendarmorocco/controller/CalendarEventController.class
+com/jmtortolero/calendarmorocco/CalendarMoroccoApplication.class
+com/jmtortolero/calendarmorocco/model/CalendarEvent$EventType.class
+com/jmtortolero/calendarmorocco/config/DataInitializer.class
+com/jmtortolero/calendarmorocco/repository/CalendarEventRepository.class
+com/jmtortolero/calendarmorocco/model/CalendarEvent.class
