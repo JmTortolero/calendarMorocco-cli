@@ -1,0 +1,12 @@
+{
+  "title": "MOROCCAN FOOTBALL LEAGUE",
+  "subtitle": "Moroccan Football Championship",
+  "calendarUpload": "Upload Calendar",
+  "excelLabel": "Excel:",
+  "propertiesLabel": "Properties:",
+  "runAppLabel": "Run application (as in properties)",
+  "generateButton": "Generate Calendar",
+  "errorText": "An error occurred.",
+  "successText": "Calendar generated and downloaded successfully!",
+  "loadingText": "Generating calendar..."
+}

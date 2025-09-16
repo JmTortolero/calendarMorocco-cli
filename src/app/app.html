@@ -3,10 +3,16 @@
     <div class="logos">
       <img src="assets/federacion.png" alt="Moroccan Federation Logo" class="logo-federation" />
     </div>
-    <h1 class="main-title">MOROCCAN FOOTBALL LEAGUE<br><span class="arabic-title">بطولة كرة القدم المغربية</span></h1>
+    <div style="margin-bottom: 1rem;">
+  <select [(ngModel)]="lang" (change)="changeLang($event)">
+        <option value="en">English</option>
+        <option value="ar">العربية</option>
+      </select>
+    </div>
+    <h1 class="main-title">{{ t.title }}<br><span class="arabic-title">{{ t.subtitle }}</span></h1>
   </div>
   <div class="calendar-upload-container">
-    <calendar-upload />
+    <calendar-upload [lang]="lang" [t]="t" [key]="lang" />
   </div>
 </main>
 <router-outlet />

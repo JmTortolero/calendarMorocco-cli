@@ -1,4 +1,13 @@
-import { Component } from '@angular/core';
+export interface TranslationTexts {
+  excelLabel?: string;
+  propertiesLabel?: string;
+  runAppLabel?: string;
+  generateButton?: string;
+  errorText?: string;
+  successText?: string;
+  loadingText?: string;
+}
+import { Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { CommonModule } from '@angular/common';
@@ -9,8 +18,10 @@ import { CommonModule } from '@angular/common';
   templateUrl: './calendar-upload.component.html',
   styleUrl: './calendar-upload.component.css'
 })
-
 export class CalendarUploadComponent {
+  @Input() key: string = '';
+  @Input() lang = 'en';
+  @Input() t: TranslationTexts = {};
   excelFile: File | null = null;
   propertiesFile: File | null = null;
   loading = false;
@@ -31,7 +42,7 @@ export class CalendarUploadComponent {
 
   async generateCalendar() {
     if (!this.excelFile) {
-      this.error = 'Selecciona un archivo Excel.';
+      this.error = this.t.errorText || 'Please select an Excel file.';
       this.success = null;
       return;
     }
@@ -50,7 +61,7 @@ export class CalendarUploadComponent {
         method: 'POST',
         body: formData
       });
-      if (!response.ok) throw new Error('Error al generar el calendario');
+  if (!response.ok) throw new Error(this.t.errorText || 'An error occurred.');
       // Si la respuesta es un archivo, forzar descarga
       const blob = await response.blob();
       const contentDisposition = response.headers.get('Content-Disposition');
@@ -69,9 +80,9 @@ export class CalendarUploadComponent {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       }, 100);
-      this.success = '¡Calendario generado y descargado correctamente!';
+  this.success = this.t.successText || 'Calendar generated and downloaded successfully!';
     } catch (e: any) {
-      this.error = e.message || 'Error desconocido';
+      this.error = e.message || this.t.errorText || 'An error occurred.';
       this.success = null;
     } finally {
       this.loading = false;

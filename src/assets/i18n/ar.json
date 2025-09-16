@@ -1,0 +1,12 @@
+{
+  "title": "بطولة كرة القدم المغربية",
+  "subtitle": "بطولة المغرب لكرة القدم",
+  "calendarUpload": "تحميل الجدول",
+  "excelLabel": ":إكسل",
+  "propertiesLabel": ":خصائص",
+  "runAppLabel": "تشغيل التطبيق (كما في الخصائص)",
+  "generateButton": "إنشاء الجدول",
+  "errorText": "حدث خطأ.",
+  "successText": "تم إنشاء الجدول وتنزيله بنجاح!",
+  "loadingText": "جاري إنشاء الجدول..."
+}
