@@ -1,10 +1,11 @@
 import { Component } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 
 import { CommonModule } from '@angular/common';
 @Component({
   selector: 'calendar-upload',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './calendar-upload.component.html',
   styleUrl: './calendar-upload.component.css'
 })
@@ -15,6 +16,7 @@ export class CalendarUploadComponent {
   loading = false;
   error: string | null = null;
   success: string | null = null;
+  ejecutarApp: boolean = false;
 
   onFileChange(event: Event, type: 'excel' | 'properties') {
     const input = event.target as HTMLInputElement;
@@ -28,8 +30,8 @@ export class CalendarUploadComponent {
   }
 
   async generateCalendar() {
-    if (!this.excelFile || !this.propertiesFile) {
-      this.error = 'Selecciona ambos archivos.';
+    if (!this.excelFile) {
+      this.error = 'Selecciona un archivo Excel.';
       this.success = null;
       return;
     }
@@ -40,8 +42,11 @@ export class CalendarUploadComponent {
       // Llamada real al backend de calendarMoroco
       const formData = new FormData();
       formData.append('excel', this.excelFile);
-      formData.append('properties', this.propertiesFile);
-      const response = await fetch('https://calendar-moroco.onrender.com/api/generate', {
+      if (this.propertiesFile) {
+        formData.append('properties', this.propertiesFile);
+      }
+      formData.append('ejecutarApp', this.ejecutarApp ? 'true' : 'false');
+      const response = await fetch('http://localhost:8080/api/schedule/run', {
         method: 'POST',
         body: formData
       });

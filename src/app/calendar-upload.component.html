@@ -7,7 +7,11 @@
     Properties:
     <input type="file" accept=".properties" (change)="onFileChange($event, 'properties')">
   </label>
-  <button (click)="generateCalendar()" [disabled]="loading">Generar Calendario</button>
+  <label>
+    <input type="checkbox" [(ngModel)]="ejecutarApp">
+    Ejecutar aplicación (como en properties)
+  </label>
+  <button (click)="generateCalendar()" [disabled]="loading || !excelFile">Generar Calendario</button>
   <div *ngIf="error" class="error">{{ error }}</div>
   <div *ngIf="success" class="success">{{ success }}</div>
   <div *ngIf="loading">Generando calendario...</div>
