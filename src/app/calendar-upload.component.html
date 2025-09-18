@@ -1,18 +1,14 @@
 <div class="upload-container">
   <label>
-    {{ t.excelLabel || 'Excel:' }}
+    Excel:
     <input type="file" accept=".xlsx,.xls" (change)="onFileChange($event, 'excel')">
   </label>
   <label>
-    {{ t.propertiesLabel || 'Properties:' }}
+    Properties:
     <input type="file" accept=".properties" (change)="onFileChange($event, 'properties')">
   </label>
-  <label>
-    <input type="checkbox" [(ngModel)]="ejecutarApp">
-    {{ t.runAppLabel || 'Ejecutar aplicación (como en properties)' }}
-  </label>
-  <button (click)="generateCalendar()" [disabled]="loading || !excelFile">{{ t.generateButton || 'Generar Calendario' }}</button>
-  <div *ngIf="error" class="error">{{ t.errorText || error }}</div>
-  <div *ngIf="success" class="success">{{ t.successText || success }}</div>
-  <div *ngIf="loading">{{ t.loadingText || 'Generando calendario...' }}</div>
+  <button (click)="generateCalendar()" [disabled]="loading">Generar Calendario</button>
+  <div *ngIf="error" class="error">{{ error }}</div>
+  <div *ngIf="success" class="success">{{ success }}</div>
+  <div *ngIf="loading">Generando calendario...</div>
 </div>

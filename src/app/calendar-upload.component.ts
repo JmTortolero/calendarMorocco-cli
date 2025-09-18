@@ -1,33 +1,20 @@
-export interface TranslationTexts {
-  excelLabel?: string;
-  propertiesLabel?: string;
-  runAppLabel?: string;
-  generateButton?: string;
-  errorText?: string;
-  successText?: string;
-  loadingText?: string;
-}
-import { Component, Input } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component } from '@angular/core';
 
 import { CommonModule } from '@angular/common';
 @Component({
   selector: 'calendar-upload',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule],
   templateUrl: './calendar-upload.component.html',
   styleUrl: './calendar-upload.component.css'
 })
+
 export class CalendarUploadComponent {
-  @Input() key: string = '';
-  @Input() lang = 'en';
-  @Input() t: TranslationTexts = {};
   excelFile: File | null = null;
   propertiesFile: File | null = null;
   loading = false;
   error: string | null = null;
   success: string | null = null;
-  ejecutarApp: boolean = false;
 
   onFileChange(event: Event, type: 'excel' | 'properties') {
     const input = event.target as HTMLInputElement;
@@ -41,8 +28,8 @@ export class CalendarUploadComponent {
   }
 
   async generateCalendar() {
-    if (!this.excelFile) {
-      this.error = this.t.errorText || 'Please select an Excel file.';
+    if (!this.excelFile || !this.propertiesFile) {
+      this.error = 'Selecciona ambos archivos.';
       this.success = null;
       return;
     }
@@ -53,15 +40,12 @@ export class CalendarUploadComponent {
       // Llamada real al backend de calendarMoroco
       const formData = new FormData();
       formData.append('excel', this.excelFile);
-      if (this.propertiesFile) {
-        formData.append('properties', this.propertiesFile);
-      }
-      formData.append('ejecutarApp', this.ejecutarApp ? 'true' : 'false');
-      const response = await fetch('http://localhost:8080/api/schedule/run', {
+      formData.append('properties', this.propertiesFile);
+      const response = await fetch('https://calendar-moroco.onrender.com/api/generate', {
         method: 'POST',
         body: formData
       });
-  if (!response.ok) throw new Error(this.t.errorText || 'An error occurred.');
+      if (!response.ok) throw new Error('Error al generar el calendario');
       // Si la respuesta es un archivo, forzar descarga
       const blob = await response.blob();
       const contentDisposition = response.headers.get('Content-Disposition');
@@ -80,9 +64,9 @@ export class CalendarUploadComponent {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       }, 100);
-  this.success = this.t.successText || 'Calendar generated and downloaded successfully!';
+      this.success = '¡Calendario generado y descargado correctamente!';
     } catch (e: any) {
-      this.error = e.message || this.t.errorText || 'An error occurred.';
+      this.error = e.message || 'Error desconocido';
       this.success = null;
     } finally {
       this.loading = false;
