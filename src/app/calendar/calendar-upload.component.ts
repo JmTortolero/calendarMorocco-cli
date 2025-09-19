@@ -1,35 +1,44 @@
 import { Component } from '@angular/core';
-
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+
+interface ConfigOption {
+  label: string;
+  value: string;
+}
+
 @Component({
-  selector: 'calendar-upload',
+  selector: 'app-calendar-upload',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './calendar-upload.component.html',
   styleUrl: './calendar-upload.component.css'
 })
-
 export class CalendarUploadComponent {
   excelFile: File | null = null;
-  propertiesFile: File | null = null;
   loading = false;
   error: string | null = null;
   success: string | null = null;
+  
+  configOptions: ConfigOption[] = [
+    { label: 'Botola D1', value: 'schBotolaD1/SchMoroccoD1.properties' },
+    { label: 'Botola D2', value: 'schBotolaD2/SchMoroccoD2.properties' },
+    { label: 'CNPFF1', value: 'schCNPFF1/MoroccoCNPFF1.properties' },
+    { label: 'CNPFF2', value: 'schCNPFF2/MoroccoCNPFF2.properties' }
+  ];
+  
+  selectedConfig: string = '';
 
-  onFileChange(event: Event, type: 'excel' | 'properties') {
+  onFileChange(event: Event, type: 'excel') {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      if (type === 'excel') {
-        this.excelFile = input.files[0];
-      } else {
-        this.propertiesFile = input.files[0];
-      }
+      this.excelFile = input.files[0];
     }
   }
 
   async generateCalendar() {
-    if (!this.excelFile || !this.propertiesFile) {
-      this.error = 'Selecciona ambos archivos.';
+    if (!this.excelFile || !this.selectedConfig) {
+      this.error = 'Selecciona el archivo Excel y una configuración.';
       this.success = null;
       return;
     }
@@ -37,16 +46,14 @@ export class CalendarUploadComponent {
     this.error = null;
     this.success = null;
     try {
-      // Llamada real al backend de calendarMoroco
       const formData = new FormData();
       formData.append('excel', this.excelFile);
-      formData.append('properties', this.propertiesFile);
+      formData.append('configFile', this.selectedConfig);
       const response = await fetch('https://calendar-moroco.onrender.com/api/generate', {
         method: 'POST',
         body: formData
       });
       if (!response.ok) throw new Error('Error al generar el calendario');
-      // Si la respuesta es un archivo, forzar descarga
       const blob = await response.blob();
       const contentDisposition = response.headers.get('Content-Disposition');
       let filename = 'calendario.xlsx';

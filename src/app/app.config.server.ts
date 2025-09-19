@@ -1,7 +1,7 @@
 import { mergeApplicationConfig, ApplicationConfig } from '@angular/core';
 import { provideServerRendering, withRoutes } from '@angular/ssr';
-import { serverRoutes } from './app.routes.server';
-import { appConfig } from './app.config';
+import { serverRoutes } from './core/app.routes.server';
+import { appConfig } from './core/app.config';
 
 
 const serverConfig: ApplicationConfig = {

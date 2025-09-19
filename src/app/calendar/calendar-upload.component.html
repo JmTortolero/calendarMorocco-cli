@@ -1,0 +1,26 @@
+<div class="upload-container">
+  <div class="form-group">
+    <label for="configSelect">Configuración:</label>
+    <select id="configSelect" [(ngModel)]="selectedConfig" class="form-control">
+      <option value="">Selecciona una configuración</option>
+      <option *ngFor="let config of configOptions" [value]="config.value">
+        {{config.label}}
+      </option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>
+      Excel:
+      <input type="file" accept=".xlsx,.xls" (change)="onFileChange($event, 'excel')">
+    </label>
+  </div>
+
+  <button (click)="generateCalendar()" [disabled]="loading || !selectedConfig || !excelFile">
+    Generar Calendario
+  </button>
+
+  <div *ngIf="error" class="error">{{ error }}</div>
+  <div *ngIf="success" class="success">{{ success }}</div>
+  <div *ngIf="loading">Generando calendario...</div>
+</div>
