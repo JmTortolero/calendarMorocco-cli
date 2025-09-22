@@ -19,14 +19,14 @@ export class CalendarUploadComponent {
   loading = false;
   error: string | null = null;
   success: string | null = null;
-  
+
   configOptions: ConfigOption[] = [
     { label: 'Botola D1', value: 'schBotolaD1/SchMoroccoD1.properties' },
     { label: 'Botola D2', value: 'schBotolaD2/SchMoroccoD2.properties' },
     { label: 'CNPFF1', value: 'schCNPFF1/MoroccoCNPFF1.properties' },
     { label: 'CNPFF2', value: 'schCNPFF2/MoroccoCNPFF2.properties' }
   ];
-  
+
   selectedConfig: string = '';
 
   onFileChange(event: Event, type: 'excel') {
@@ -49,7 +49,7 @@ export class CalendarUploadComponent {
       const formData = new FormData();
       formData.append('excel', this.excelFile);
       formData.append('configFile', this.selectedConfig);
-      const response = await fetch('https://calendar-moroco.onrender.com/api/generate', {
+      const response = await fetch('https://localhost/api/generate', {
         method: 'POST',
         body: formData
       });

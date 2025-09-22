@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
-import { MonitorComponent } from '../monitor/monitor.component';
-import { CalendarUploadComponent } from '../calendar/calendar-upload.component';
+import { MonitorComponent } from './features/monitor/monitor.component';
+import { CalendarUploadComponent } from './features/calendar/calendar-upload.component';
 
 export const routes: Routes = [
   { path: '', component: CalendarUploadComponent },

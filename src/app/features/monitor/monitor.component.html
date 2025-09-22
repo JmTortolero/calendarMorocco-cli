@@ -1,0 +1,90 @@
+<div class="monitor-container">
+  <div class="status-indicator">
+    <h3>Estado del Backend</h3>
+    <div class="status-light" [class.online]="isBackendOnline" [class.offline]="!isBackendOnline">
+      {{ isBackendOnline ? 'ONLINE' : 'OFFLINE' }}
+    </div>
+  </div>
+
+  <div class="endpoints-container">
+    <h3>Endpoints del Backend</h3>
+    <button (click)="checkAllEndpoints()" class="check-all-button">Verificar Todos</button>
+
+    <div class="endpoints-grid">
+      <div *ngFor="let endpoint of endpoints" class="endpoint-card">
+        <div class="endpoint-header">
+          <h4>{{ endpoint.name }}</h4>
+          <div class="header-actions">
+            <button *ngIf="endpoint.isCustom"
+                    (click)="removeCustomEndpoint(endpoint)"
+                    class="remove-button"
+                    title="Eliminar endpoint personalizado">
+              🗑️
+            </button>
+            <div class="endpoint-status-light"
+                 [class.status-online]="endpoint.status === 'online'"
+                 [class.status-offline]="endpoint.status === 'offline'"
+                 [class.status-checking]="endpoint.status === 'checking'">
+              {{ endpoint.status === 'checking' ? '⏳' : endpoint.status === 'online' ? '✅' : '❌' }}
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-url">{{ endpoint.url }}{{ endpoint.path }}</div>
+
+        <div class="endpoint-message"
+             [class.message-success]="endpoint.status === 'online'"
+             [class.message-error]="endpoint.status === 'offline'">
+          {{ endpoint.message }}
+        </div>
+
+        <div class="endpoint-actions">
+          <button (click)="checkEndpoint(endpoint)"
+                  class="endpoint-button"
+                  [disabled]="endpoint.status === 'checking'">
+            {{ endpoint.status === 'checking' ? 'Verificando...' : 'Verificar' }}
+          </button>
+          <small *ngIf="endpoint.lastChecked" class="last-checked">
+            Última verificación: {{ endpoint.lastChecked | date:'HH:mm:ss' }}
+          </small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulario para endpoint personalizado -->
+  <div class="custom-endpoint-form">
+    <h4>🔧 Endpoint Personalizado</h4>
+    <div class="form-row">
+      <input
+        type="text"
+        [(ngModel)]="customName"
+        placeholder="Nombre del endpoint (opcional)"
+        class="form-input name-input">
+      <input
+        type="url"
+        [(ngModel)]="customUrl"
+        placeholder="https://ejemplo.com/api/endpoint"
+        class="form-input url-input">
+      <button
+        (click)="addCustomEndpoint()"
+        class="add-button"
+        [disabled]="!customUrl.trim()">
+        ➕ Agregar
+      </button>
+    </div>
+  </div>
+
+  <div class="logs-container">
+    <h3>Logs del Sistema</h3>
+    <button (click)="manualLogUpdate()" class="check-button">Actualizar Logs</button>
+    <div class="logs-window">
+      <div *ngFor="let log of logs" class="log-entry">
+        {{ log }}
+      </div>
+      <div *ngIf="logs.length === 0" class="log-entry">
+        No hay logs disponibles. Presiona "Actualizar Logs" para cargar.
+      </div>
+    </div>
+  </div>
+</div>
