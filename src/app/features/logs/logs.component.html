@@ -1,36 +1,36 @@
 <div class="logs-container">
   <div class="logs-header">
-    <h2>📋 Logs del Sistema</h2>
+    <h2>{{ 'logs.title' | translate }}</h2>
   </div>
 
   <div class="logs-controls">
     <button (click)="manualLogUpdate()" class="control-button update-button">
-      🔄 Actualizar Logs
+      {{ 'logs.updateButton' | translate }}
     </button>
     <button (click)="clearLogs()" class="control-button clear-button">
-      🗑️ Limpiar Logs
+      {{ 'logs.clearButton' | translate }}
     </button>
   </div>
 
   <div class="logs-window-container">
-    <h3>Información del Backend</h3>
+    <h3>{{ 'logs.backendInfo' | translate }}</h3>
     <div class="logs-window">
       <div *ngFor="let log of logs" class="log-entry">
         {{ log }}
       </div>
       <div *ngIf="logs.length === 0" class="log-entry no-logs">
-        📝 No hay logs disponibles. Presiona "Actualizar Logs" para cargar.
+        {{ 'logs.noLogs' | translate }}
       </div>
     </div>
   </div>
 
   <div class="logs-info">
-    <p><strong>ℹ️ Información:</strong></p>
+    <p><strong>{{ 'logs.infoTitle' | translate }}</strong></p>
     <ul>
-      <li>Los logs se actualizan automáticamente cada 10 segundos</li>
-      <li>El estado del backend se verifica cada 5 segundos</li>
-      <li>Usa "Actualizar Logs" para una actualización manual inmediata</li>
-      <li>Si el backend está offline, verifica que Spring Boot esté corriendo en puerto 8080</li>
+      <li>{{ 'logs.info1' | translate }}</li>
+      <li>{{ 'logs.info2' | translate }}</li>
+      <li>{{ 'logs.info3' | translate }}</li>
+      <li>{{ 'logs.info4' | translate }}</li>
     </ul>
   </div>
 </div>

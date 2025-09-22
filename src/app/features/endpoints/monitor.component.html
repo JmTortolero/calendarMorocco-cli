@@ -1,7 +1,7 @@
 <div class="monitor-container">
   <div class="endpoints-container">
-    <h3>🎯 End Points del Backend</h3>
-    <button (click)="checkAllEndpoints()" class="check-all-button">Verificar Todos</button>
+    <h3>{{ 'endpoints.subtitle' | translate }}</h3>
+    <button (click)="checkAllEndpoints()" class="check-all-button">{{ 'endpoints.verifyAll' | translate }}</button>
 
     <div class="endpoints-grid">
       <div *ngFor="let endpoint of endpoints" class="endpoint-card">
@@ -35,10 +35,10 @@
           <button (click)="checkEndpoint(endpoint)"
                   class="endpoint-button"
                   [disabled]="endpoint.status === 'checking'">
-            {{ endpoint.status === 'checking' ? 'Verificando...' : 'Verificar' }}
+            {{ endpoint.status === 'checking' ? ('endpoints.verifying' | translate) : ('endpoints.verify' | translate) }}
           </button>
           <small *ngIf="endpoint.lastChecked" class="last-checked">
-            Última verificación: {{ endpoint.lastChecked | date:'HH:mm:ss' }}
+            {{ 'endpoints.lastCheck' | translate }} {{ endpoint.lastChecked | date:'HH:mm:ss' }}
           </small>
         </div>
       </div>
@@ -47,23 +47,23 @@
 
   <!-- Formulario para endpoint personalizado -->
   <div class="custom-endpoint-form">
-    <h4>🔧 Endpoint Personalizado</h4>
+    <h4>{{ 'endpoints.customTitle' | translate }}</h4>
     <div class="form-row">
       <input
         type="text"
         [(ngModel)]="customName"
-        placeholder="Nombre del endpoint (opcional)"
+        [placeholder]="'endpoints.customName' | translate"
         class="form-input name-input">
       <input
         type="url"
         [(ngModel)]="customUrl"
-        placeholder="https://ejemplo.com/api/endpoint"
+        [placeholder]="'endpoints.customUrl' | translate"
         class="form-input url-input">
       <button
         (click)="addCustomEndpoint()"
         class="add-button"
         [disabled]="!customUrl.trim()">
-        ➕ Agregar
+        {{ 'endpoints.addButton' | translate }}
       </button>
     </div>
   </div>

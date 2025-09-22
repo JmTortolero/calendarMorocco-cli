@@ -1,29 +1,47 @@
-import { Component, signal, OnInit, OnDestroy } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { RouterOutlet, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MonitorService } from './core/services/monitor.service';
+import { TranslationService } from './core/services/translation.service';
+import { TranslatePipe } from './core/pipes/translate.pipe';
 import { interval, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, CommonModule],
+  imports: [RouterOutlet, RouterLink, CommonModule, TranslatePipe],
   template: `
     <nav class="navigation">
       <div class="nav-links">
-        <a routerLink="/">Generar Calendario</a>
+        <a routerLink="/">{{ 'nav.generateCalendar' | translate }}</a>
         <a class="separator">|</a>
-        <a routerLink="/endpoints">End Points</a>
+        <a routerLink="/endpoints">{{ 'nav.endpoints' | translate }}</a>
         <a class="separator">|</a>
-        <a routerLink="/logs">Logs</a>
+        <a routerLink="/logs">{{ 'nav.logs' | translate }}</a>
       </div>
-      <div class="backend-status">
-        <span class="status-label">Backend:</span>
-        <div
-          class="status-indicator"
-          [class.online]="isBackendOnline"
-          [class.offline]="!isBackendOnline"
-        >
-          {{ isBackendOnline ? 'ONLINE' : 'OFFLINE' }}
+      <div class="nav-controls">
+        <div class="language-selector">
+          <button
+            (click)="setLanguage('en')"
+            [class.active]="translationService.currentLang === 'en'"
+            class="lang-button">
+            EN
+          </button>
+          <button
+            (click)="setLanguage('ar')"
+            [class.active]="translationService.currentLang === 'ar'"
+            class="lang-button">
+            ع
+          </button>
+        </div>
+        <div class="backend-status">
+          <span class="status-label">{{ 'nav.backend' | translate }}:</span>
+          <div
+            class="status-indicator"
+            [class.online]="isBackendOnline"
+            [class.offline]="!isBackendOnline"
+          >
+            {{ isBackendOnline ? ('nav.online' | translate) : ('nav.offline' | translate) }}
+          </div>
         </div>
       </div>
     </nav>
@@ -72,6 +90,41 @@ import { interval, Subscription } from 'rxjs';
         display: flex;
         align-items: center;
         gap: 8px;
+      }
+
+      .nav-controls {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+
+      .language-selector {
+        display: flex;
+        gap: 2px;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        overflow: hidden;
+      }
+
+      .lang-button {
+        padding: 6px 12px;
+        border: none;
+        background: #f8f9fa;
+        color: #495057;
+        cursor: pointer;
+        font-size: 0.9em;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        min-width: 35px;
+      }
+
+      .lang-button:hover {
+        background: #e9ecef;
+      }
+
+      .lang-button.active {
+        background: #007bff;
+        color: white;
       }
 
       .status-label {
@@ -142,8 +195,14 @@ import { interval, Subscription } from 'rxjs';
           order: 2;
         }
 
-        .backend-status {
+        .nav-controls {
           order: 1;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .language-selector {
+          align-self: center;
         }
       }
     `,
@@ -154,6 +213,8 @@ export class AppComponent implements OnInit, OnDestroy {
   protected readonly title = signal('calendarMorocco-cli');
   isBackendOnline = false;
   private statusSubscription?: Subscription;
+
+  translationService = inject(TranslationService);
 
   constructor(private monitorService: MonitorService) {}
 
@@ -183,5 +244,9 @@ export class AppComponent implements OnInit, OnDestroy {
         this.isBackendOnline = false;
       },
     });
+  }
+
+  setLanguage(lang: 'en' | 'ar') {
+    this.translationService.setLanguage(lang);
   }
 }

@@ -1,16 +1,18 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslatePipe } from '../../core/pipes/translate.pipe';
+import { TranslationService } from '../../core/services/translation.service';
 
 interface ConfigOption {
-  label: string;
+  labelKey: string;
   value: string;
 }
 
 @Component({
   selector: 'app-generate-calendar',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslatePipe],
   templateUrl: './generateCalendar.component.html',
   styleUrl: './generateCalendar.component.css'
 })
@@ -20,11 +22,13 @@ export class GenerateCalendarComponent {
   error: string | null = null;
   success: string | null = null;
 
+  translationService = inject(TranslationService);
+
   configOptions: ConfigOption[] = [
-    { label: 'Botola D1', value: 'schBotolaD1/SchMoroccoD1.properties' },
-    { label: 'Botola D2', value: 'schBotolaD2/SchMoroccoD2.properties' },
-    { label: 'CNPFF1', value: 'schCNPFF1/MoroccoCNPFF1.properties' },
-    { label: 'CNPFF2', value: 'schCNPFF2/MoroccoCNPFF2.properties' }
+    { labelKey: 'config.botolaD1', value: 'schBotolaD1/SchMoroccoD1.properties' },
+    { labelKey: 'config.botolaD2', value: 'schBotolaD2/SchMoroccoD2.properties' },
+    { labelKey: 'config.cnpff1', value: 'schCNPFF1/MoroccoCNPFF1.properties' },
+    { labelKey: 'config.cnpff2', value: 'schCNPFF2/MoroccoCNPFF2.properties' }
   ];
 
   selectedConfig: string = '';
@@ -38,7 +42,7 @@ export class GenerateCalendarComponent {
 
   async generateCalendar() {
     if (!this.excelFile || !this.selectedConfig) {
-      this.error = 'Selecciona el archivo Excel y una configuración.';
+      this.error = this.translationService.translate('calendar.errorFileConfig');
       this.success = null;
       return;
     }
@@ -53,7 +57,7 @@ export class GenerateCalendarComponent {
         method: 'POST',
         body: formData
       });
-      if (!response.ok) throw new Error('Error al generar el calendario');
+      if (!response.ok) throw new Error(this.translationService.translate('calendar.errorGenerate'));
       const blob = await response.blob();
       const contentDisposition = response.headers.get('Content-Disposition');
       let filename = 'calendario.xlsx';
@@ -71,9 +75,9 @@ export class GenerateCalendarComponent {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       }, 100);
-      this.success = '¡Calendario generado y descargado correctamente!';
+      this.success = this.translationService.translate('calendar.success');
     } catch (e: any) {
-      this.error = e.message || 'Error desconocido';
+      this.error = e.message || this.translationService.translate('calendar.errorUnknown');
       this.success = null;
     } finally {
       this.loading = false;

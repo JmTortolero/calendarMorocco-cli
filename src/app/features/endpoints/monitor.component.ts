@@ -1,7 +1,9 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MonitorService } from '../../core/services/monitor.service';
+import { TranslatePipe } from '../../core/pipes/translate.pipe';
+import { TranslationService } from '../../core/services/translation.service';
 import { interval, Subscription } from 'rxjs';
 
 interface EndpointStatus {
@@ -17,7 +19,7 @@ interface EndpointStatus {
 @Component({
   selector: 'app-monitor',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslatePipe],
   templateUrl: './monitor.component.html',
   styleUrls: ['./monitor.component.css']
 })
@@ -25,6 +27,8 @@ export class MonitorComponent implements OnInit, OnDestroy {
   isBackendOnline = false;
   customUrl = '';
   customName = '';
+
+  translationService = inject(TranslationService);
 
   endpoints: EndpointStatus[] = [
     { name: 'Raíz', url: 'http://localhost:8080', path: '', status: 'offline', message: 'No verificado' },
@@ -101,7 +105,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
 
   addCustomEndpoint() {
     if (!this.customUrl.trim()) {
-      alert('Por favor, ingresa una URL válida');
+      alert(this.translationService.translate('calendar.errorFileConfig'));
       return;
     }
 
@@ -122,7 +126,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
       url: this.customUrl.trim(),
       path: '',
       status: 'offline',
-      message: 'No verificado',
+      message: this.translationService.translate('endpoints.notVerified'),
       isCustom: true
     };
 

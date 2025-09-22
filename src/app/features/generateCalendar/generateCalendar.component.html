@@ -1,26 +1,38 @@
 <div class="upload-container">
+  <div class="header">
+    <h1>{{ 'calendar.title' | translate }}</h1>
+    <h2>{{ 'calendar.subtitle' | translate }}</h2>
+  </div>
+
   <div class="form-group">
-    <label for="configSelect">Configuración:</label>
+    <label for="configSelect">{{ 'calendar.configLabel' | translate }}</label>
     <select id="configSelect" [(ngModel)]="selectedConfig" class="form-control">
-      <option value="">Selecciona una configuración</option>
+      <option value="">{{ 'calendar.selectConfig' | translate }}</option>
       <option *ngFor="let config of configOptions" [value]="config.value">
-        {{config.label}}
+        {{ config.labelKey | translate }}
       </option>
     </select>
   </div>
 
   <div class="form-group">
-    <label>
-      Excel:
-      <input type="file" accept=".xlsx,.xls" (change)="onFileChange($event, 'excel')">
-    </label>
+    <label for="excelFile">{{ 'calendar.excelLabel' | translate }}</label>
+    <input
+      id="excelFile"
+      type="file"
+      accept=".xlsx,.xls"
+      (change)="onFileChange($event, 'excel')"
+      class="form-control">
+    <small *ngIf="!excelFile" class="help-text">{{ 'calendar.selectFile' | translate }}</small>
+    <small *ngIf="excelFile" class="file-selected">✓ {{ excelFile.name }}</small>
   </div>
 
-  <button (click)="generateCalendar()" [disabled]="loading || !selectedConfig || !excelFile">
-    Generar Calendario
+  <button
+    (click)="generateCalendar()"
+    [disabled]="loading || !selectedConfig || !excelFile"
+    class="generate-button">
+    {{ loading ? ('calendar.loading' | translate) : ('calendar.generateButton' | translate) }}
   </button>
 
   <div *ngIf="error" class="error">{{ error }}</div>
   <div *ngIf="success" class="success">{{ success }}</div>
-  <div *ngIf="loading">Generando calendario...</div>
 </div>
