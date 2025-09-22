@@ -1,13 +1,6 @@
 <div class="monitor-container">
-  <div class="status-indicator">
-    <h3>Estado del Backend</h3>
-    <div class="status-light" [class.online]="isBackendOnline" [class.offline]="!isBackendOnline">
-      {{ isBackendOnline ? 'ONLINE' : 'OFFLINE' }}
-    </div>
-  </div>
-
   <div class="endpoints-container">
-    <h3>Endpoints del Backend</h3>
+    <h3>🎯 End Points del Backend</h3>
     <button (click)="checkAllEndpoints()" class="check-all-button">Verificar Todos</button>
 
     <div class="endpoints-grid">
@@ -72,19 +65,6 @@
         [disabled]="!customUrl.trim()">
         ➕ Agregar
       </button>
-    </div>
-  </div>
-
-  <div class="logs-container">
-    <h3>Logs del Sistema</h3>
-    <button (click)="manualLogUpdate()" class="check-button">Actualizar Logs</button>
-    <div class="logs-window">
-      <div *ngFor="let log of logs" class="log-entry">
-        {{ log }}
-      </div>
-      <div *ngIf="logs.length === 0" class="log-entry">
-        No hay logs disponibles. Presiona "Actualizar Logs" para cargar.
-      </div>
     </div>
   </div>
 </div>

@@ -8,13 +8,13 @@ interface ConfigOption {
 }
 
 @Component({
-  selector: 'app-calendar-upload',
+  selector: 'app-generate-calendar',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './calendar-upload.component.html',
-  styleUrl: './calendar-upload.component.css'
+  templateUrl: './generateCalendar.component.html',
+  styleUrl: './generateCalendar.component.css'
 })
-export class CalendarUploadComponent {
+export class GenerateCalendarComponent {
   excelFile: File | null = null;
   loading = false;
   error: string | null = null;

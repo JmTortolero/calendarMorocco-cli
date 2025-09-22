@@ -23,7 +23,6 @@ interface EndpointStatus {
 })
 export class MonitorComponent implements OnInit, OnDestroy {
   isBackendOnline = false;
-  logs: string[] = [];
   customUrl = '';
   customName = '';
 
@@ -38,34 +37,25 @@ export class MonitorComponent implements OnInit, OnDestroy {
   ];
 
   private statusSubscription?: Subscription;
-  private logsSubscription?: Subscription;
 
   constructor(private monitorService: MonitorService) {}
 
   ngOnInit() {
-    console.log('MonitorComponent inicializado - Verificación automática cada 5 segundos');
+    console.log('MonitorComponent inicializado - Verificación automática cada 2 segundos');
 
     // Verificar estado cada 2 segundos
     this.statusSubscription = interval(2000).subscribe(() => {
-      console.log('Verificación automática de estado...');
+      console.log('Verificación automática de endpoints...');
       this.checkBackendStatus();
     });
 
-    // Actualizar logs cada 5 segundos (más frecuente para debugging)
-    this.logsSubscription = interval(5000).subscribe(() => {
-      console.log('Actualizando logs...');
-      this.updateLogs();
-    });
-
     // Verificación inicial
-    console.log('Iniciando verificación inicial...');
+    console.log('Iniciando verificación inicial de endpoints...');
     this.checkBackendStatus();
-    this.updateLogs();
   }
 
   ngOnDestroy() {
     this.statusSubscription?.unsubscribe();
-    this.logsSubscription?.unsubscribe();
   }
 
   private checkBackendStatus() {
@@ -80,28 +70,6 @@ export class MonitorComponent implements OnInit, OnDestroy {
         this.isBackendOnline = false;
       }
     });
-  }
-
-  private updateLogs() {
-    console.log('Actualizando logs...');
-    this.monitorService.getLogs().subscribe({
-      next: (logs: string[]) => {
-        console.log('Logs recibidos:', logs);
-        this.logs = logs;
-      },
-      error: (error: any) => {
-        console.error('Error obteniendo logs:', error);
-        this.logs = [
-          `[${new Date().toISOString()}] Error obteniendo logs del servidor`,
-          `[${new Date().toISOString()}] Detalles: ${error.message}`
-        ];
-      }
-    });
-  }
-
-  manualLogUpdate() {
-    console.log('Actualización manual de logs solicitada');
-    this.updateLogs();
   }
 
   checkEndpoint(endpoint: EndpointStatus) {
