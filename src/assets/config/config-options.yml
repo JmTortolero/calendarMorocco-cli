@@ -1,0 +1,9 @@
+configOptions:
+  - labelKey: 'config.botolaD1'
+    value: 'schBotolaD1/SchMoroccoD1.properties'
+  - labelKey: 'config.botolaD2'
+    value: 'schBotolaD2/SchMoroccoD2.properties'
+  - labelKey: 'config.cnpff1'
+    value: 'schCNPFF1/MoroccoCNPFF1.properties'
+  - labelKey: 'config.cnpff2'
+    value: 'schCNPFF2/MoroccoCNPFF2.properties'

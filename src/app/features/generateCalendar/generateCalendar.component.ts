@@ -1,12 +1,18 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
 import { TranslationService } from '../../core/services/translation.service';
+import { HttpClient } from '@angular/common/http';
+import * as yaml from 'js-yaml';
 
 interface ConfigOption {
   labelKey: string;
   value: string;
+}
+
+interface ConfigData {
+  configOptions: ConfigOption[];
 }
 
 @Component({
@@ -16,22 +22,49 @@ interface ConfigOption {
   templateUrl: './generateCalendar.component.html',
   styleUrl: './generateCalendar.component.css'
 })
-export class GenerateCalendarComponent {
+export class GenerateCalendarComponent implements OnInit {
   excelFile: File | null = null;
   loading = false;
   error: string | null = null;
   success: string | null = null;
 
   translationService = inject(TranslationService);
+  http = inject(HttpClient);
 
-  configOptions: ConfigOption[] = [
-    { labelKey: 'config.botolaD1', value: 'schBotolaD1/SchMoroccoD1.properties' },
-    { labelKey: 'config.botolaD2', value: 'schBotolaD2/SchMoroccoD2.properties' },
-    { labelKey: 'config.cnpff1', value: 'schCNPFF1/MoroccoCNPFF1.properties' },
-    { labelKey: 'config.cnpff2', value: 'schCNPFF2/MoroccoCNPFF2.properties' }
-  ];
+  configOptions: ConfigOption[] = [];
 
   selectedConfig: string = '';
+
+  async ngOnInit() {
+    await this.loadConfigOptions();
+  }
+
+  async loadConfigOptions() {
+    try {
+      // Intentar cargar desde el backend primero
+      const response = await this.http.get<ConfigData>('/api/config/options').toPromise();
+      this.configOptions = response?.configOptions || [];
+    } catch (backendError) {
+      console.warn('Backend not available, trying local YAML fallback:', backendError);
+
+      try {
+        // Fallback a archivo YAML local
+        const response = await this.http.get('/assets/config/config-options.yml', { responseType: 'text' }).toPromise();
+        const data = yaml.load(response as string) as ConfigData;
+        this.configOptions = data.configOptions;
+      } catch (yamlError) {
+        console.error('Error loading config options from YAML:', yamlError);
+
+        // Fallback final a configuración hardcodeada
+        this.configOptions = [
+          { labelKey: 'config.botolaD1', value: 'schBotolaD1/SchMoroccoD1.properties' },
+          { labelKey: 'config.botolaD2', value: 'schBotolaD2/SchMoroccoD2.properties' },
+          { labelKey: 'config.cnpff1', value: 'schCNPFF1/MoroccoCNPFF1.properties' },
+          { labelKey: 'config.cnpff2', value: 'schCNPFF2/MoroccoCNPFF2.properties' }
+        ];
+      }
+    }
+  }
 
   onFileChange(event: Event, type: 'excel') {
     const input = event.target as HTMLInputElement;
