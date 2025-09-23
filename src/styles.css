@@ -18,11 +18,27 @@ body {
   transition: text-align 0.3s ease;
 }
 
-/* RTL specific adjustments */
+/* Los controles de navegación siempre mantienen su posición */
+.nav-controls,
+.language-selector,
+.backend-status {
+  direction: ltr !important;
+}
+
+/* Solo el contenido principal sigue la dirección RTL */
+[dir="rtl"] router-outlet,
+[dir="rtl"] .upload-container,
+[dir="rtl"] .logs-container,
+[dir="rtl"] .monitor-container {
+  direction: rtl;
+}
+
+/* RTL específico para formularios dentro del contenido */
 [dir="rtl"] .form-row {
   direction: rtl;
 }
 
+/* Los links de navegación sí siguen la dirección */
 [dir="rtl"] .nav-links {
   direction: rtl;
 }

@@ -1,12 +1,65 @@
 {
-  "title": "MOROCCAN FOOTBALL LEAGUE",
-  "subtitle": "Moroccan Football Championship",
-  "generateCalendar": "Generate Calendar",
-  "excelLabel": "Excel:",
-  "propertiesLabel": "Properties:",
-  "runAppLabel": "Run application (as in properties)",
-  "generateButton": "Generate Calendar",
-  "errorText": "An error occurred.",
-  "successText": "Calendar generated and downloaded successfully!",
-  "loadingText": "Generating calendar..."
+  "nav": {
+    "generateCalendar": "Generate Calendar",
+    "endpoints": "End Points",
+    "logs": "Logs",
+    "backend": "Backend",
+    "online": "ONLINE",
+    "offline": "OFFLINE"
+  },
+  "calendar": {
+    "title": "CALENDAR GENERATION",
+    "subtitle": "Morocco Football Federation",
+    "excelLabel": "Excel File:",
+    "configLabel": "Competition: (League)",
+    "selectFile": "Select Excel file",
+    "selectConfig": "Select competition",
+    "noFileSelected": "No file selected",
+    "generateButton": "Generate Calendar",
+    "loading": "Generating calendar...",
+    "success": "Calendar generated and downloaded successfully!",
+    "errorFileConfig": "Please select Excel file and competition.",
+    "errorGenerate": "Error generating calendar",
+    "errorUnknown": "Unknown error"
+  },
+  "config": {
+    "botolaD1": "Botola D1",
+    "botolaD2": "Botola D2",
+    "cnpff1": "CNPFF1",
+    "cnpff2": "CNPFF2"
+  },
+  "endpoints": {
+    "title": "Connectivity Status",
+    "subtitle": "Backend End Points",
+    "verifyAll": "Verify All",
+    "customTitle": "Custom Endpoint",
+    "customName": "Endpoint name (optional)",
+    "customUrl": "https://example.com/api/endpoint",
+    "addButton": "Add",
+    "verifying": "Verifying...",
+    "verify": "Verify",
+    "notVerified": "Not verified",
+    "lastCheck": "Last check:",
+    "remove": "Remove custom endpoint"
+  },
+  "logs": {
+    "title": "System Logs",
+    "updateButton": "Update Logs",
+    "clearButton": "Clear Logs",
+    "backendInfo": "Backend Information",
+    "noLogs": "No logs available. Press \"Update Logs\" to load.",
+    "infoTitle": "Information:",
+    "info1": "Logs are updated automatically every 10 seconds",
+    "info2": "Backend status is checked every 5 seconds",
+    "info3": "Use \"Update Logs\" for immediate manual update",
+    "info4": "If backend is offline, verify Spring Boot is running on port 8080"
+  },
+  "error": {
+    "cors": "CORS or server not responding",
+    "notFound": "Endpoint not found (404)",
+    "serverError": "Internal server error (500)",
+    "connection": "Connection error",
+    "gettingLogs": "Error getting logs from server",
+    "details": "Details:"
+  }
 }

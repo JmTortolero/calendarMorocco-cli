@@ -22,7 +22,7 @@
       accept=".xlsx,.xls"
       (change)="onFileChange($event, 'excel')"
       class="form-control">
-    <small *ngIf="!excelFile" class="help-text">{{ 'calendar.selectFile' | translate }}</small>
+    <small *ngIf="!excelFile" class="help-text">{{ 'calendar.noFileSelected' | translate }}</small>
     <small *ngIf="excelFile" class="file-selected">✓ {{ excelFile.name }}</small>
   </div>
 

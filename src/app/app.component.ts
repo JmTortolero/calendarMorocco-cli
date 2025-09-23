@@ -66,6 +66,7 @@ import { interval, Subscription } from 'rxjs';
         display: flex;
         align-items: center;
         gap: 1rem;
+        /* Solo los links de navegación siguen la dirección del idioma */
       }
 
       .nav-links a {
@@ -90,12 +91,17 @@ import { interval, Subscription } from 'rxjs';
         display: flex;
         align-items: center;
         gap: 8px;
+        /* Mantener dirección LTR para posición fija */
+        direction: ltr !important;
       }
 
       .nav-controls {
         display: flex;
         align-items: center;
         gap: 15px;
+        /* Forzar dirección LTR para que siempre esté en la misma posición */
+        direction: ltr !important;
+        text-align: right;
       }
 
       .language-selector {
@@ -104,6 +110,8 @@ import { interval, Subscription } from 'rxjs';
         border: 1px solid #dee2e6;
         border-radius: 6px;
         overflow: hidden;
+        /* Mantener orden fijo */
+        flex-direction: row !important;
       }
 
       .lang-button {
@@ -193,16 +201,21 @@ import { interval, Subscription } from 'rxjs';
 
         .nav-links {
           order: 2;
+          /* En móvil, mantener el orden normal */
         }
 
         .nav-controls {
           order: 1;
-          flex-direction: column;
-          gap: 10px;
+          /* Mantener horizontal en móvil también */
+          flex-direction: row !important;
+          justify-content: center;
+          gap: 15px;
+          width: 100%;
         }
 
         .language-selector {
-          align-self: center;
+          /* No cambiar posición en móvil */
+          align-self: auto;
         }
       }
     `,

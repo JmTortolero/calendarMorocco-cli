@@ -1,12 +1,65 @@
 {
-  "title": "بطولة كرة القدم المغربية",
-  "subtitle": "بطولة المغرب لكرة القدم",
-  "generateCalendar": "إنشاء الجدول",
-  "excelLabel": ":إكسل",
-  "propertiesLabel": ":خصائص",
-  "runAppLabel": "تشغيل التطبيق (كما في الخصائص)",
-  "generateButton": "إنشاء الجدول",
-  "errorText": "حدث خطأ.",
-  "successText": "تم إنشاء الجدول وتنزيله بنجاح!",
-  "loadingText": "جاري إنشاء الجدول..."
+  "nav": {
+    "generateCalendar": "إنشاء الجدول",
+    "endpoints": "نقاط النهاية",
+    "logs": "السجلات",
+    "backend": "الخادم",
+    "online": "متصل",
+    "offline": "غير متصل"
+  },
+  "calendar": {
+    "title": "توليد التقويم",
+    "subtitle": "الاتحاد المغربي لكرة القدم",
+    "excelLabel": "ملف إكسل:",
+    "configLabel": "المنافسة: (League)",
+    "selectFile": "اختر ملف إكسل",
+    "selectConfig": "اختر المنافسة",
+    "noFileSelected": "لم يتم اختيار ملف",
+    "generateButton": "إنشاء الجدول",
+    "loading": "جاري إنشاء الجدول...",
+    "success": "تم إنشاء الجدول وتنزيله بنجاح!",
+    "errorFileConfig": "يرجى اختيار ملف إكسل والمنافسة.",
+    "errorGenerate": "خطأ في إنشاء الجدول",
+    "errorUnknown": "خطأ غير معروف"
+  },
+  "config": {
+    "botolaD1": "البطولة الأولى",
+    "botolaD2": "البطولة الثانية",
+    "cnpff1": "الاتحاد الأول",
+    "cnpff2": "الاتحاد الثاني"
+  },
+  "endpoints": {
+    "title": "حالة الاتصال",
+    "subtitle": "نقاط نهاية الخادم",
+    "verifyAll": "التحقق من الكل",
+    "customTitle": "نقطة نهاية مخصصة",
+    "customName": "اسم النقطة (اختياري)",
+    "customUrl": "https://example.com/api/endpoint",
+    "addButton": "إضافة",
+    "verifying": "جاري التحقق...",
+    "verify": "تحقق",
+    "notVerified": "غير محقق",
+    "lastCheck": "آخر فحص:",
+    "remove": "إزالة النقطة المخصصة"
+  },
+  "logs": {
+    "title": "سجلات النظام",
+    "updateButton": "تحديث السجلات",
+    "clearButton": "مسح السجلات",
+    "backendInfo": "معلومات الخادم",
+    "noLogs": "لا توجد سجلات متاحة. اضغط \"تحديث السجلات\" للتحميل.",
+    "infoTitle": "معلومات:",
+    "info1": "يتم تحديث السجلات تلقائياً كل 10 ثوانِ",
+    "info2": "يتم فحص حالة الخادم كل 5 ثوانِ",
+    "info3": "استخدم \"تحديث السجلات\" للتحديث الفوري",
+    "info4": "إذا كان الخادم غير متصل، تحقق من تشغيل Spring Boot على المنفذ 8080"
+  },
+  "error": {
+    "cors": "CORS أو الخادم لا يستجيب",
+    "notFound": "النقطة غير موجودة (404)",
+    "serverError": "خطأ داخلي في الخادم (500)",
+    "connection": "خطأ في الاتصال",
+    "gettingLogs": "خطأ في الحصول على السجلات من الخادم",
+    "details": "التفاصيل:"
+  }
 }
