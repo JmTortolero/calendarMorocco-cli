@@ -37,3 +37,8 @@ yarn-error.log*
 .github/instructions/nx.instructions.md
 /FEATURES_VS_SHARED.md
 /PROJECT_STRUCTURE.md
+/CORS_SOLUTION.md
+/DEBUG_BACKEND_ONLINE.md
+/ENDPOINT_STATUS_FIX.md
+/HTTP_200_CATCHERROR_FIX.md
+/HTTP_200_FIX.md

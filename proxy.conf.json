@@ -1,0 +1,36 @@
+{{
+
+  "/api/*": {  "/api/*": {
+
+    "target": "http://localhost:8080",    "target": "http://localhost:8080",
+
+    "secure": false,    "secure": false,
+
+    "changeOrigin": true,    "changeOrigin": true,
+
+    "logLevel": "debug",    "logLevel": "debug"
+
+    "timeout": 3000,  },
+
+    "headers": {  "/actuator/*": {
+
+      "Cache-Control": "no-cache, no-store, must-revalidate"    "target": "http://localhost:8080",
+
+    }    "secure": false,
+
+  },    "changeOrigin": true,
+
+  "/actuator/*": {    "logLevel": "debug"
+
+    "target": "http://localhost:8080",  }
+
+    "secure": false,}
+
+    "changeOrigin": true,
+    "logLevel": "debug",
+    "timeout": 3000,
+    "headers": {
+      "Cache-Control": "no-cache, no-store, must-revalidate"
+    }
+  }
+}

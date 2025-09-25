@@ -1,10 +1,24 @@
 import { Routes } from '@angular/router';
-import { MonitorComponent } from './features/endpoints/monitor.component';
-import { LogsComponent } from './features/logs/logs.component';
-import { GenerateCalendarComponent } from './features/generateCalendar/generateCalendar.component';
 
 export const routes: Routes = [
-  { path: '', component: GenerateCalendarComponent },
-  { path: 'endpoints', component: MonitorComponent },
-  { path: 'logs', component: LogsComponent }
+  {
+    path: '',
+    loadComponent: () => import('./features/generateCalendar/generateCalendar.component').then(m => m.GenerateCalendarComponent),
+    title: 'Calendar Generation - Morocco Football Federation'
+  },
+  {
+    path: 'endpoints',
+    loadComponent: () => import('./features/endpoints/endpoints.component').then(m => m.EndpointsComponent),
+    title: 'Endpoints Monitor - Morocco Football Federation'
+  },
+  {
+    path: 'logs',
+    loadComponent: () => import('./features/logs/logs.component').then(m => m.LogsComponent),
+    title: 'System Logs - Morocco Football Federation'
+  },
+  {
+    path: '**',
+    redirectTo: '',
+    pathMatch: 'full'
+  }
 ];

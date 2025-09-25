@@ -1,0 +1,15 @@
+<div class="nav-section">
+  <div class="nav-links">
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+      {{ 'nav.generateCalendar' | translate }}
+    </a>
+    <span class="separator">|</span>
+    <a routerLink="/endpoints" routerLinkActive="active">
+      {{ 'nav.endpoints' | translate }}
+    </a>
+    <span class="separator">|</span>
+    <a routerLink="/logs" routerLinkActive="active">
+      {{ 'nav.logs' | translate }}
+    </a>
+  </div>
+</div>

@@ -1,84 +1,99 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { map, catchError, timeout } from 'rxjs/operators';
+import { map, catchError, timeout, tap } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root'
 })
 export class MonitorService {
-  private apiUrl = 'http://localhost:8080';
+  private readonly apiUrl = '';
 
-  constructor(private http: HttpClient) {}
+  // Angular 20 Best Practice: inject() function
+  private readonly http = inject(HttpClient);
+
+
 
   checkBackendStatus(): Observable<boolean> {
-    console.log('Verificando estado del backend en:', `${this.apiUrl}/actuator/health`);
+    console.log('🔍 Verificando estado del backend en:', `${this.apiUrl}/actuator/health`);
+    console.log('🕐 Timestamp:', new Date().toISOString());
 
-    // Spring Boot Actuator health endpoint
-    return this.http.get(`${this.apiUrl}/actuator/health`).pipe(
-      timeout(10000),
+    // Enfoque más simple: usar responseType 'text' para evitar problemas de parsing JSON
+    return this.http.get(`${this.apiUrl}/actuator/health`, {
+      observe: 'response',
+      responseType: 'text', // Cambiar a text para evitar problemas de parsing
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    }).pipe(
+      timeout(10000), // Timeout generoso
+      tap(response => {
+        console.log('🔄 Respuesta recibida - Status:', response.status);
+        console.log('🔄 Content-Type:', response.headers.get('content-type'));
+        console.log('🔄 Body type:', typeof response.body);
+        console.log('🔄 Body preview:', response.body?.substring(0, 100));
+      }),
       map(response => {
-        console.log('Backend health respondió:', response);
-        return true;
+        console.log('✅ Procesando respuesta en MAP (no en catchError)');
+        console.log('📊 Status code:', response.status);
+
+        // Solo considerar online si es HTTP 200
+        if (response.status === 200) {
+          console.log('🟢 Backend marcado como ONLINE (HTTP 200 en MAP correctamente)');
+          return true;
+        } else {
+          console.log(`🔴 Backend respondió con status ${response.status}, considerando OFFLINE`);
+          return false;
+        }
       }),
       catchError(error => {
-        console.error('Error CORS o conexión:', error);
-        console.log('Detalles del error:', {
+        console.error('❌ ERROR en checkBackendStatus:', error);
+        console.log('🔍 Detalles completos del error:', {
           message: error.message,
           status: error.status,
-          url: error.url
+          statusText: error.statusText,
+          url: error.url,
+          name: error.name,
+          error: error.error,
+          type: typeof error,
+          constructor: error.constructor.name
         });
+        console.log('⏰ Timestamp del error:', new Date().toISOString());
 
-        if (error.status === 0) {
-          console.log('🚨 ERROR CORS DETECTADO:');
-          console.log('Tu backend Spring Boot necesita configuración CORS');
-          console.log('Agrega esta configuración a tu backend:');
-          console.log(`
-@Configuration
-@EnableWebMvc
-public class WebConfig implements WebMvcConfigurer {
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOrigins("http://localhost:4200")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true);
-    }
-}`);
+        // DIAGNÓSTICO: Si vemos HTTP 200 aquí, aún hay un problema
+        if (error.status === 200) {
+          console.log('🚨 PROBLEMA PERSISTE: HTTP 200 sigue llegando al catchError');
+          console.log('🔍 Con responseType: text, esto no debería pasar');
+          console.log('🔍 Error completo:', JSON.stringify(error, null, 2));
+          console.log('🔍 Probablemente es un problema con el timeout o el pipeline');
+          // Forzar return true ya que sabemos que es HTTP 200
+          return of(true);
         }
 
-        console.log('Intentando endpoint info...');
+        // Analizar el tipo de error
+        if (error.status === 0) {
+          console.log('🚨 ERROR: Sin conexión al backend');
+          console.log('💡 Posibles causas:');
+          console.log('   - Backend Spring Boot no está corriendo');
+          console.log('   - Problema de red');
+          console.log('   - Proxy falló al conectar');
+        } else if (error.status === 502) {
+          console.log('🚨 ERROR 502: Bad Gateway - Proxy no puede conectar al backend');
+        } else if (error.status === 503) {
+          console.log('🚨 ERROR 503: Service Unavailable - Backend no disponible');
+        } else if (error.status === 504) {
+          console.log('🚨 ERROR 504: Gateway Timeout - Backend no responde');
+        } else {
+          console.log(`🚨 ERROR HTTP ${error.status}: ${error.statusText}`);
+        }
 
-        // Si /health falla, intentamos /info
-        return this.http.get(`${this.apiUrl}/actuator/info`).pipe(
-          timeout(5000),
-          map(response => {
-            console.log('Endpoint /actuator/info respondió:', response);
-            return true;
-          }),
-          catchError(infoError => {
-            console.log('Intentando endpoint raíz...');
+        console.log('🔴 Backend marcado como OFFLINE - No hay fallbacks');
+        console.log('⚠️  Para debugging: verifica que el backend esté corriendo en puerto 8080');
 
-            // Si los actuator fallan, intentamos la raíz
-            return this.http.get(this.apiUrl, { responseType: 'text' }).pipe(
-              timeout(5000),
-              map(response => {
-                console.log('Endpoint raíz respondió, Spring Boot está corriendo');
-                return true;
-              }),
-              catchError(rootError => {
-                console.error('Backend Spring Boot offline:', {
-                  healthError: error,
-                  infoError: infoError,
-                  rootError: rootError
-                });
-                console.log('Asegúrate de que el backend Spring Boot esté corriendo en puerto 8080');
-                return of(false);
-              })
-            );
-          })
-        );
+        // NO hacer fallbacks - si falla el health endpoint, es que está offline
+        return of(false);
       })
     );
   }
@@ -88,7 +103,7 @@ public class WebConfig implements WebMvcConfigurer {
 
     // Intentamos obtener información de los actuator endpoints
     return this.http.get(`${this.apiUrl}/actuator/info`).pipe(
-      timeout(10000),
+      timeout(60000),
       map((info: any) => {
         console.log('Info del backend:', info);
         const timestamp = new Date().toISOString();
@@ -158,7 +173,7 @@ public class WebConfig implements WebMvcConfigurer {
       '/api',
       '/error'
     ];
-    const baseUrl = 'http://localhost:8080';
+    const baseUrl = ''; // Usar proxy
 
     console.log('Descubriendo endpoints Spring Boot disponibles...');
 
@@ -188,32 +203,67 @@ public class WebConfig implements WebMvcConfigurer {
 
   // Método para verificar un endpoint específico
   checkSingleEndpoint(url: string): Observable<any> {
-    console.log('Verificando endpoint:', url);
+    console.log('🔍 Verificando endpoint:', url);
+    console.log('🕐 Timestamp:', new Date().toISOString());
 
     return this.http.get(url, {
       responseType: 'text',
-      observe: 'response'
+      observe: 'response',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
     }).pipe(
-      timeout(5000),
+      timeout(3000), // Reducir timeout
       map(response => {
-        return {
-          status: response.status,
-          message: `HTTP ${response.status} - OK`,
-          body: response.body?.substring(0, 100) || 'Sin contenido'
-        };
+        console.log(`Endpoint ${url} respondió con status: ${response.status}`);
+
+        // Solo códigos 2xx son considerados exitosos
+        if (response.status >= 200 && response.status < 300) {
+          return {
+            status: response.status,
+            message: `HTTP ${response.status} - OK`,
+            body: response.body?.substring(0, 100) || 'Sin contenido',
+            error: false
+          };
+        } else {
+          return {
+            status: response.status,
+            message: `HTTP ${response.status} - Error`,
+            body: response.body?.substring(0, 100) || 'Sin contenido',
+            error: true
+          };
+        }
       }),
       catchError(error => {
+        console.error('❌ ERROR en checkSingleEndpoint:', error);
+        console.log('🔍 Error details:', {
+          status: error.status,
+          statusText: error.statusText,
+          message: error.message,
+          url: url
+        });
+
         let errorMessage = 'Error desconocido';
 
         if (error.status === 0) {
-          errorMessage = 'CORS o servidor no responde';
+          errorMessage = 'Servidor no responde o proxy falló';
+        } else if (error.status === 502) {
+          errorMessage = 'Bad Gateway - Proxy no puede conectar';
+        } else if (error.status === 503) {
+          errorMessage = 'Service Unavailable - Backend offline';
+        } else if (error.status === 504) {
+          errorMessage = 'Gateway Timeout - Backend no responde';
         } else if (error.status === 404) {
           errorMessage = 'Endpoint no encontrado (404)';
         } else if (error.status === 500) {
           errorMessage = 'Error interno del servidor (500)';
         } else if (error.status) {
-          errorMessage = `HTTP ${error.status}`;
+          errorMessage = `HTTP ${error.status} - ${error.statusText}`;
         }
+
+        console.log(`🔴 Endpoint ${url} marcado como OFFLINE: ${errorMessage}`);
 
         return of({
           status: error.status || 0,

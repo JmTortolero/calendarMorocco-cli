@@ -1,42 +1,40 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, inject, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MonitorService } from '../../core/services/monitor.service';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
 import { TranslationService } from '../../core/services/translation.service';
-import { interval, Subscription } from 'rxjs';
+import { interval } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-logs',
   standalone: true,
   imports: [CommonModule, TranslatePipe],
   templateUrl: './logs.component.html',
-  styleUrls: ['./logs.component.css']
+  styleUrl: './logs.component.css'
 })
-export class LogsComponent implements OnInit, OnDestroy {
+export class LogsComponent implements OnInit {
   logs: string[] = [];
 
-  translationService = inject(TranslationService);
-
-  private logsSubscription?: Subscription;
-
-  constructor(private monitorService: MonitorService) {}
+  // Angular 20 Best Practice: inject() function + DestroyRef
+  private readonly translationService = inject(TranslationService);
+  private readonly monitorService = inject(MonitorService);
+  private readonly destroyRef = inject(DestroyRef);
 
   ngOnInit() {
     console.log('LogsComponent inicializado - Actualización automática de logs cada 10 segundos');
 
-    // Actualizar logs cada 10 segundos
-    this.logsSubscription = interval(10000).subscribe(() => {
-      console.log('Actualizando logs automáticamente...');
-      this.updateLogs();
-    });
+    // Angular 20 Best Practice: takeUntilDestroyed()
+    interval(10000)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        console.log('Actualizando logs automáticamente...');
+        this.updateLogs();
+      });
 
     // Verificación inicial
     console.log('Iniciando carga inicial de logs...');
     this.updateLogs();
-  }
-
-  ngOnDestroy() {
-    this.logsSubscription?.unsubscribe();
   }
 
   private updateLogs() {
@@ -65,5 +63,10 @@ export class LogsComponent implements OnInit, OnDestroy {
   clearLogs() {
     console.log('Limpiando logs');
     this.logs = [];
+  }
+
+  // Angular 20 Best Practice: Getters for template access
+  get currentTranslationService() {
+    return this.translationService;
   }
 }

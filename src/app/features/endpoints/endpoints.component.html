@@ -53,11 +53,13 @@
         type="text"
         [(ngModel)]="customName"
         [placeholder]="'endpoints.customName' | translate"
+        [attr.aria-label]="'endpoints.customName' | translate"
         class="form-input name-input">
       <input
         type="url"
         [(ngModel)]="customUrl"
         [placeholder]="'endpoints.customUrl' | translate"
+        [attr.aria-label]="'endpoints.customUrl' | translate"
         class="form-input url-input">
       <button
         (click)="addCustomEndpoint()"

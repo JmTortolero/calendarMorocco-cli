@@ -1,0 +1,133 @@
+.title-section {
+  padding: 0.5rem 1rem;
+  /* TAMAÑO FIJO ABSOLUTO - NUNCA CAMBIA */
+  width: 420px;
+  min-width: 420px;
+  max-width: 420px;
+  height: 85px;
+  min-height: 85px;
+  max-height: 85px;
+  overflow: visible;
+  /* POSICIÓN FIJA ABSOLUTA */
+  direction: ltr !important;
+  text-align: left !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.title-section h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 0.2rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(135deg, #ffffff, #FFD700);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  /* TAMAÑO FIJO - SIN CORTAR */
+  line-height: 1.2;
+  height: 36px;
+  overflow: visible;
+  white-space: nowrap;
+}
+
+.title-section h2 {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #FFE5B4;
+  margin: 0;
+  font-style: normal;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  /* TAMAÑO FIJO */
+  line-height: 1.3;
+  height: 26px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* RTL - MANTENER POSICIÓN FIJA ABSOLUTA */
+[dir="rtl"] .title-section {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+[dir="rtl"] .title-section h1,
+[dir="rtl"] .title-section h2 {
+  text-align: left !important;
+  direction: ltr !important;
+}
+
+/* Responsive - MANTENER TAMAÑOS FIJOS */
+@media (max-width: 1100px) {
+  .title-section {
+    width: 380px;
+    min-width: 380px;
+    max-width: 380px;
+  }
+
+  .title-section h1 {
+    font-size: 1.4rem;
+    height: 34px;
+  }
+
+  .title-section h2 {
+    font-size: 0.8rem;
+    height: 24px;
+  }
+}
+
+@media (max-width: 900px) {
+  .title-section {
+    text-align: center !important;
+    width: 360px;
+    min-width: 360px;
+    max-width: 360px;
+    height: 80px;
+  }
+
+  .title-section h1 {
+    font-size: 1.5rem;
+    height: 36px;
+  }
+
+  .title-section h2 {
+    font-size: 0.9rem;
+    height: 26px;
+  }
+
+  /* MOBILE RTL - MANTENER CENTRADO */
+  [dir="rtl"] .title-section {
+    text-align: center !important;
+  }
+
+  [dir="rtl"] .title-section h1,
+  [dir="rtl"] .title-section h2 {
+    text-align: center !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .title-section {
+    width: 320px;
+    min-width: 320px;
+    max-width: 320px;
+    height: 75px;
+  }
+
+  .title-section h1 {
+    font-size: 1.3rem;
+    letter-spacing: 0.6px;
+    height: 30px;
+  }
+
+  .title-section h2 {
+    font-size: 0.8rem;
+    height: 22px;
+  }
+}

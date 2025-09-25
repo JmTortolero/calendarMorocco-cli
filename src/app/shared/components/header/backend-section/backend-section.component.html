@@ -1,0 +1,31 @@
+<div class="backend-section">
+  <div class="controls-container">
+    <!-- Selector de idioma -->
+    <div class="language-selector">
+      <button
+        (click)="setLanguage('en')"
+        [class.active]="currentTranslationService.currentLang === 'en'"
+        class="lang-button">
+        EN
+      </button>
+      <button
+        (click)="setLanguage('ar')"
+        [class.active]="currentTranslationService.currentLang === 'ar'"
+        class="lang-button">
+        ع
+      </button>
+    </div>
+
+    <!-- Estado del backend -->
+    <div class="backend-status">
+      <span class="status-label">{{ 'nav.backend' | translate }}:</span>
+      <div
+        class="status-indicator"
+        [class.online]="isBackendOnline"
+        [class.offline]="!isBackendOnline"
+      >
+        {{ isBackendOnline ? ('nav.online' | translate) : ('nav.offline' | translate) }}
+      </div>
+    </div>
+  </div>
+</div>

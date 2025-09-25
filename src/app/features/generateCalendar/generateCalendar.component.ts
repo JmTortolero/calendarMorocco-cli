@@ -1,10 +1,11 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import * as yaml from 'js-yaml';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
 import { TranslationService } from '../../core/services/translation.service';
-import { HttpClient } from '@angular/common/http';
-import * as yaml from 'js-yaml';
 
 interface ConfigOption {
   labelKey: string;
@@ -28,8 +29,9 @@ export class GenerateCalendarComponent implements OnInit {
   error: string | null = null;
   success: string | null = null;
 
-  translationService = inject(TranslationService);
-  http = inject(HttpClient);
+  // Angular 20 Best Practice: inject() function + readonly
+  private readonly translationService = inject(TranslationService);
+  private readonly http = inject(HttpClient);
 
   configOptions: ConfigOption[] = [];
 
@@ -41,15 +43,19 @@ export class GenerateCalendarComponent implements OnInit {
 
   async loadConfigOptions() {
     try {
-      // Intentar cargar desde el backend primero
-      const response = await this.http.get<ConfigData>('/api/config/options').toPromise();
+      // Angular 20 Best Practice: Direct firstValueFrom usage
+      const response = await firstValueFrom(
+        this.http.get<ConfigData>('/api/config/options')
+      );
       this.configOptions = response?.configOptions || [];
     } catch (backendError) {
       console.warn('Backend not available, trying local YAML fallback:', backendError);
 
       try {
         // Fallback a archivo YAML local
-        const response = await this.http.get('/assets/config/config-options.yml', { responseType: 'text' }).toPromise();
+        const response = await firstValueFrom(
+          this.http.get('/assets/config/config-options.yml', { responseType: 'text' })
+        );
         const data = yaml.load(response as string) as ConfigData;
         this.configOptions = data.configOptions;
       } catch (yamlError) {
@@ -115,5 +121,10 @@ export class GenerateCalendarComponent implements OnInit {
     } finally {
       this.loading = false;
     }
+  }
+
+  // Angular 20 Best Practice: Getters for template access
+  get currentTranslationService() {
+    return this.translationService;
   }
 }

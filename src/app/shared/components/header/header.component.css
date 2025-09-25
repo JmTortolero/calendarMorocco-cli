@@ -1,0 +1,218 @@
+/* HEADER ESTILO FRMF.MA - MODERNO Y FIJO */
+.uefa-header {
+  background: linear-gradient(135deg, #8B0000 0%, #B22222 30%, #DC143C 70%, #FF4500 100%);
+  box-shadow: 0 8px 32px rgba(139, 0, 0, 0.5);
+  position: sticky;
+  top: 0;
+  z-index: 2000;
+  margin-bottom: 0;
+  border-bottom: 3px solid #FFD700;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  /* POSICIÓN ABSOLUTA FIJA - JAMÁS CAMBIA */
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+.header-wrapper {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 2.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  /* ESTRUCTURA FIJA */
+  direction: ltr !important;
+}
+
+.header-content {
+  display: grid;
+  grid-template-columns: 450px 1fr 250px;
+  align-items: center;
+  min-height: 85px;
+  gap: 1.5rem;
+  /* GRID FIJO - POSICIONES ABSOLUTAS */
+  direction: ltr !important;
+}
+
+.brand-zone {
+  /* ZONA 1: SIEMPRE IZQUIERDA - TAMAÑO FIJO */
+  grid-column: 1;
+  justify-self: start;
+  direction: ltr !important;
+  width: 300px;
+  min-width: 300px;
+  max-width: 300px;
+  overflow: hidden;
+}
+
+.nav-zone {
+  /* ZONA 2: SIEMPRE CENTRO */
+  grid-column: 2;
+  justify-self: center;
+  direction: ltr !important;
+}
+
+.control-zone {
+  /* ZONA 3: SIEMPRE DERECHA */
+  grid-column: 3;
+  justify-self: end;
+  direction: ltr !important;
+  min-width: 250px;
+}
+
+/* ANTI-RTL: FORZAR POSICIÓN FIJA ABSOLUTA */
+[dir="rtl"] .uefa-header {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+[dir="rtl"] .header-wrapper {
+  direction: ltr !important;
+}
+
+[dir="rtl"] .header-content {
+  direction: ltr !important;
+  grid-template-columns: 350px 1fr 300px !important;
+}
+
+[dir="rtl"] .brand-zone {
+  grid-column: 1 !important;
+  justify-self: start !important;
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+[dir="rtl"] .nav-zone {
+  grid-column: 2 !important;
+  justify-self: center !important;
+  direction: ltr !important;
+}
+
+[dir="rtl"] .control-zone {
+  grid-column: 3 !important;
+  justify-self: end !important;
+  direction: ltr !important;
+}
+
+/* RESPONSIVE - MANTENER ORDEN FIJO */
+@media (max-width: 1300px) {
+  .header-content {
+    grid-template-columns: 300px 1fr 280px;
+    gap: 1.5rem;
+  }
+
+  .header-wrapper {
+    padding: 0 2rem;
+  }
+}
+
+@media (max-width: 1100px) {
+  .header-content {
+    grid-template-columns: 380px 1fr 200px;
+    gap: 1rem;
+    min-height: 75px;
+  }
+
+  .brand-zone {
+    width: 380px;
+    min-width: 380px;
+    max-width: 380px;
+  }
+
+  .control-zone {
+    min-width: 180px;
+  }
+}
+
+@media (max-width: 900px) {
+  .header-content {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 1rem;
+    min-height: unset;
+    padding: 1.5rem 0;
+  }
+
+  .brand-zone {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: center;
+    width: 360px;
+    min-width: 360px;
+    max-width: 360px;
+  }
+
+  .nav-zone {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: center;
+  }
+
+  .control-zone {
+    grid-column: 1;
+    grid-row: 3;
+    justify-self: center;
+    min-width: auto;
+  }
+
+  /* MOBILE RTL - MANTENER EXACTAMENTE EL MISMO ORDEN */
+  [dir="rtl"] .brand-zone {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    justify-self: center !important;
+  }
+
+  [dir="rtl"] .nav-zone {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    justify-self: center !important;
+  }
+
+  [dir="rtl"] .control-zone {
+    grid-column: 1 !important;
+    grid-row: 3 !important;
+    justify-self: center !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .header-wrapper {
+    padding: 0 1rem;
+  }
+
+  .uefa-header {
+    margin-bottom: 1rem;
+  }
+
+  .header-content {
+    padding: 1rem 0;
+  }
+
+  .brand-zone {
+    width: 320px;
+    min-width: 320px;
+    max-width: 320px;
+  }
+}
+
+/* EFECTOS MODERNOS MARROQUÍ */
+.uefa-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #FFD700, transparent);
+}
+
+.uefa-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #DC143C, transparent);
+}

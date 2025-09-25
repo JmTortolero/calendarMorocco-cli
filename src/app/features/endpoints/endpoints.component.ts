@@ -1,10 +1,11 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, inject, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MonitorService } from '../../core/services/monitor.service';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
 import { TranslationService } from '../../core/services/translation.service';
-import { interval, Subscription } from 'rxjs';
+import { interval } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 interface EndpointStatus {
   name: string;
@@ -17,49 +18,47 @@ interface EndpointStatus {
 }
 
 @Component({
-  selector: 'app-monitor',
+  selector: 'app-endpoints',
   standalone: true,
   imports: [CommonModule, FormsModule, TranslatePipe],
-  templateUrl: './monitor.component.html',
-  styleUrls: ['./monitor.component.css']
+  templateUrl: './endpoints.component.html',
+  styleUrl: './endpoints.component.css'
 })
-export class MonitorComponent implements OnInit, OnDestroy {
+export class EndpointsComponent implements OnInit {
   isBackendOnline = false;
   customUrl = '';
   customName = '';
 
-  translationService = inject(TranslationService);
+  // Angular 20 Best Practice: inject() function + DestroyRef
+  private readonly translationService = inject(TranslationService);
+  private readonly monitorService = inject(MonitorService);
+  private readonly destroyRef = inject(DestroyRef);
 
   endpoints: EndpointStatus[] = [
-    { name: 'Raíz', url: 'http://localhost:8080', path: '', status: 'offline', message: 'No verificado' },
-    { name: 'Actuator', url: 'http://localhost:8080', path: '/actuator', status: 'offline', message: 'No verificado' },
-    { name: 'Health', url: 'http://localhost:8080', path: '/actuator/health', status: 'offline', message: 'No verificado' },
-    { name: 'Info', url: 'http://localhost:8080', path: '/actuator/info', status: 'offline', message: 'No verificado' },
-    { name: 'Mappings', url: 'http://localhost:8080', path: '/actuator/mappings', status: 'offline', message: 'No verificado' },
-    { name: 'API', url: 'http://localhost:8080', path: '/api', status: 'offline', message: 'No verificado' },
-    { name: 'Error', url: 'http://localhost:8080', path: '/error', status: 'offline', message: 'No verificado' }
+    { name: 'Raíz', url: '', path: '', status: 'offline', message: 'No verificado' },
+    { name: 'Actuator', url: '', path: '/actuator', status: 'offline', message: 'No verificado' },
+    { name: 'Health', url: '', path: '/actuator/health', status: 'offline', message: 'No verificado' },
+    { name: 'Info', url: '', path: '/actuator/info', status: 'offline', message: 'No verificado' },
+    { name: 'Mappings', url: '', path: '/actuator/mappings', status: 'offline', message: 'No verificado' },
+    { name: 'API', url: '', path: '/api', status: 'offline', message: 'No verificado' },
+    { name: 'Error', url: '', path: '/error', status: 'offline', message: 'No verificado' },
+    { name: 'Test 404', url: '', path: '/endpoint-que-no-existe', status: 'offline', message: 'Test endpoint para probar errores' }
   ];
 
-  private statusSubscription?: Subscription;
-
-  constructor(private monitorService: MonitorService) {}
-
   ngOnInit() {
-    console.log('MonitorComponent inicializado - Verificación automática cada 2 segundos');
+    console.log('EndpointsComponent inicializado - Verificación automática cada 2 segundos');
 
-    // Verificar estado cada 2 segundos
-    this.statusSubscription = interval(2000).subscribe(() => {
-      console.log('Verificación automática de endpoints...');
-      this.checkBackendStatus();
-    });
+    // Angular 20 Best Practice: takeUntilDestroyed()
+    interval(1000)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        console.log('Verificación automática de endpoints...');
+        this.checkBackendStatus();
+      });
 
     // Verificación inicial
     console.log('Iniciando verificación inicial de endpoints...');
     this.checkBackendStatus();
-  }
-
-  ngOnDestroy() {
-    this.statusSubscription?.unsubscribe();
   }
 
   private checkBackendStatus() {
@@ -84,14 +83,24 @@ export class MonitorComponent implements OnInit, OnDestroy {
 
     this.monitorService.checkSingleEndpoint(endpoint.url + endpoint.path).subscribe({
       next: (response: any) => {
-        endpoint.status = 'online';
-        endpoint.message = response.message || 'OK - Respuesta exitosa';
-        console.log(`✅ ${endpoint.name}: OK`);
+        console.log(`📡 Respuesta para ${endpoint.name}:`, response);
+
+        // Verificar si la respuesta indica un error
+        if (response.error === true || response.status >= 400) {
+          endpoint.status = 'offline';
+          endpoint.message = response.message || `Error HTTP ${response.status}`;
+          console.log(`❌ ${endpoint.name}: OFFLINE - ${endpoint.message}`);
+        } else {
+          endpoint.status = 'online';
+          endpoint.message = response.message || 'OK - Respuesta exitosa';
+          console.log(`✅ ${endpoint.name}: ONLINE - ${endpoint.message}`);
+        }
       },
       error: (error: any) => {
         endpoint.status = 'offline';
         endpoint.message = error.message || `Error ${error.status || 'de conexión'}`;
-        console.log(`❌ ${endpoint.name}: ${endpoint.message}`);
+        console.log(`❌ ${endpoint.name}: ERROR - ${endpoint.message}`);
+        console.error('Error completo:', error);
       }
     });
   }
@@ -150,5 +159,10 @@ export class MonitorComponent implements OnInit, OnDestroy {
         console.log('Endpoint personalizado eliminado:', endpoint.name);
       }
     }
+  }
+
+  // Angular 20 Best Practice: Getters for template access
+  get currentTranslationService() {
+    return this.translationService;
   }
 }
