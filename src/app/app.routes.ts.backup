@@ -7,11 +7,6 @@ export const routes: Routes = [
     title: 'Calendar Generation - Morocco Football Federation'
   },
   {
-    path: 'jobs',
-    loadComponent: () => import('./features/jobs/jobs.component').then(m => m.JobsComponent),
-    title: 'Jobs Monitor - Morocco Football Federation'
-  },
-  {
     path: 'endpoints',
     loadComponent: () => import('./features/endpoints/endpoints.component').then(m => m.EndpointsComponent),
     title: 'Endpoints Monitor - Morocco Football Federation'

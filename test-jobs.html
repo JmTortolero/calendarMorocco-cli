@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Jobs API</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #666;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button.secondary {
+            background: #2196F3;
+        }
+        button.secondary:hover {
+            background: #1976D2;
+        }
+        .result {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+        input, select {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        label {
+            display: inline-block;
+            width: 120px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Test de Jobs API - Demo de 40 segundos</h1>
+        
+        <div class="section">
+            <h2>📊 Estado del Backend</h2>
+            <button onclick="checkHealth()">🏥 Check Health</button>
+            <div id="healthResult" class="result"></div>
+        </div>
+
+        <div class="section">
+            <h2>🚀 Crear Job Asíncrono</h2>
+            <div class="form-group">
+                <label>Excel:</label>
+                <select id="excelSelect">
+                    <option value="MoroccoBotolaD1">MoroccoBotolaD1</option>
+                    <option value="MoroccoBotolaD2">MoroccoBotolaD2</option>
+                    <option value="MoroccoCNPFF1">MoroccoCNPFF1</option>
+                    <option value="MoroccoCNPFF2">MoroccoCNPFF2</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Properties:</label>
+                <select id="propertiesSelect">
+                    <option value="MoroccoDiv1">MoroccoDiv1</option>
+                    <option value="MoroccoDiv2v1">MoroccoDiv2v1</option>
+                    <option value="MoroccoFemDiv1">MoroccoFemDiv1</option>
+                    <option value="MoroccoFemDiv2">MoroccoFemDiv2</option>
+                </select>
+            </div>
+            <button onclick="createAsyncJob()">🚀 Crear Job (40s demo)</button>
+            <div id="createResult" class="result"></div>
+        </div>
+
+        <div class="section">
+            <h2>📋 Lista de Jobs</h2>
+            <button onclick="listJobs()">📋 Listar Todos los Jobs</button>
+            <button class="secondary" onclick="startAutoRefresh()">🔄 Auto-Refresh (3s)</button>
+            <button class="secondary" onclick="stopAutoRefresh()">⏹ Stop Auto-Refresh</button>
+            <div id="listResult" class="result"></div>
+        </div>
+
+        <div class="section">
+            <h2>🔍 Estado Específico de Job</h2>
+            <div class="form-group">
+                <label>Job ID:</label>
+                <input type="text" id="jobIdInput" placeholder="Ingrese Job ID">
+                <button onclick="getJobStatus()">📊 Ver Estado</button>
+                <button onclick="startJobPolling()">🔄 Poll Estado (2s)</button>
+                <button onclick="stopJobPolling()">⏹ Stop Polling</button>
+            </div>
+            <div id="statusResult" class="result"></div>
+        </div>
+
+        <div class="section">
+            <h2>🛑 Cancelar Job</h2>
+            <div class="form-group">
+                <label>Job ID:</label>
+                <input type="text" id="cancelJobIdInput" placeholder="Ingrese Job ID">
+                <button onclick="cancelJob()">🛑 Cancelar Job</button>
+            </div>
+            <div id="cancelResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:8080';
+        let autoRefreshInterval = null;
+        let jobPollingInterval = null;
+
+        function log(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}\n`;
+            
+            if (element.textContent.length > 5000) {
+                element.textContent = element.textContent.substring(2000);
+            }
+            
+            element.textContent += logMessage;
+            element.className = `result ${isError ? 'error' : 'success'}`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        async function checkHealth() {
+            try {
+                log('healthResult', '🔍 Verificando health del backend...');
+                const response = await fetch(`${BASE_URL}/actuator/health`);
+                const data = await response.json();
+                log('healthResult', `✅ Backend Health: ${JSON.stringify(data, null, 2)}`);
+            } catch (error) {
+                log('healthResult', `❌ Error verificando health: ${error.message}`, true);
+            }
+        }
+
+        async function createAsyncJob() {
+            try {
+                const excel = document.getElementById('excelSelect').value;
+                const properties = document.getElementById('propertiesSelect').value;
+                
+                log('createResult', `🚀 Creando job asíncrono con excel=${excel}, properties=${properties}...`);
+                
+                const response = await fetch(`${BASE_URL}/api/jobs/generate-async?excel=${excel}&properties=${properties}`, {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const job = await response.json();
+                log('createResult', `✅ Job creado exitosamente:\n${JSON.stringify(job, null, 2)}`);
+                
+                // Auto-llenar el campo de Job ID para polling
+                document.getElementById('jobIdInput').value = job.id;
+                
+                // Iniciar polling automático del job recién creado
+                startJobPolling();
+                
+            } catch (error) {
+                log('createResult', `❌ Error creando job: ${error.message}`, true);
+            }
+        }
+
+        async function listJobs() {
+            try {
+                log('listResult', '📋 Obteniendo lista de jobs...');
+                const response = await fetch(`${BASE_URL}/api/jobs/list`);
+                const jobs = await response.json();
+                
+                let summary = `✅ Total de jobs: ${jobs.length}\n\n`;
+                
+                jobs.forEach((job, index) => {
+                    const duration = job.startedAt && job.completedAt 
+                        ? Math.round((new Date(job.completedAt) - new Date(job.startedAt)) / 1000) + 's'
+                        : job.startedAt 
+                        ? Math.round((new Date() - new Date(job.startedAt)) / 1000) + 's (en curso)'
+                        : 'N/A';
+                        
+                    summary += `[${index + 1}] ${getStatusIcon(job.status)} ID: ${job.id}\n`;
+                    summary += `    Estado: ${job.status}\n`;
+                    summary += `    Creado: ${new Date(job.createdAt).toLocaleString()}\n`;
+                    summary += `    Duración: ${duration}\n`;
+                    if (job.errorMessage) summary += `    Error: ${job.errorMessage}\n`;
+                    if (job.resultFiles && job.resultFiles.length > 0) {
+                        summary += `    Archivos: ${job.resultFiles.join(', ')}\n`;
+                    }
+                    summary += '\n';
+                });
+                
+                log('listResult', summary);
+            } catch (error) {
+                log('listResult', `❌ Error obteniendo lista: ${error.message}`, true);
+            }
+        }
+
+        async function getJobStatus() {
+            const jobId = document.getElementById('jobIdInput').value;
+            if (!jobId) {
+                log('statusResult', '❌ Por favor ingrese un Job ID', true);
+                return;
+            }
+            
+            try {
+                log('statusResult', `🔍 Obteniendo estado del job ${jobId}...`);
+                const response = await fetch(`${BASE_URL}/api/jobs/status/${jobId}`);
+                const job = await response.json();
+                log('statusResult', `📊 Estado del job:\n${JSON.stringify(job, null, 2)}`);
+            } catch (error) {
+                log('statusResult', `❌ Error obteniendo estado: ${error.message}`, true);
+            }
+        }
+
+        async function cancelJob() {
+            const jobId = document.getElementById('cancelJobIdInput').value;
+            if (!jobId) {
+                log('cancelResult', '❌ Por favor ingrese un Job ID', true);
+                return;
+            }
+            
+            try {
+                log('cancelResult', `🛑 Cancelando job ${jobId}...`);
+                const response = await fetch(`${BASE_URL}/api/jobs/cancel/${jobId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    log('cancelResult', `✅ Job ${jobId} cancelado exitosamente`);
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                log('cancelResult', `❌ Error cancelando job: ${error.message}`, true);
+            }
+        }
+
+        function startAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            
+            log('listResult', '🔄 Iniciando auto-refresh cada 3 segundos...');
+            autoRefreshInterval = setInterval(listJobs, 3000);
+            listJobs(); // Primera carga inmediata
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                log('listResult', '⏹ Auto-refresh detenido');
+            }
+        }
+
+        function startJobPolling() {
+            const jobId = document.getElementById('jobIdInput').value;
+            if (!jobId) {
+                log('statusResult', '❌ Por favor ingrese un Job ID', true);
+                return;
+            }
+            
+            if (jobPollingInterval) {
+                clearInterval(jobPollingInterval);
+            }
+            
+            log('statusResult', `🔄 Iniciando polling del job ${jobId} cada 2 segundos...`);
+            jobPollingInterval = setInterval(() => getJobStatus(), 2000);
+            getJobStatus(); // Primera carga inmediata
+        }
+
+        function stopJobPolling() {
+            if (jobPollingInterval) {
+                clearInterval(jobPollingInterval);
+                jobPollingInterval = null;
+                log('statusResult', '⏹ Job polling detenido');
+            }
+        }
+
+        function getStatusIcon(status) {
+            switch (status) {
+                case 'PENDING': return '⏳';
+                case 'RUNNING': return '⚡';
+                case 'COMPLETED': return '✅';
+                case 'ERROR': return '❌';
+                case 'CANCELLED': return '🛑';
+                default: return '❓';
+            }
+        }
+
+        // Auto-verificar health al cargar la página
+        window.onload = function() {
+            checkHealth();
+        };
+    </script>
+</body>
+</html>

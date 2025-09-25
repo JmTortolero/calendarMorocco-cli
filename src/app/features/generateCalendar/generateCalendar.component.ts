@@ -92,7 +92,12 @@ export class GenerateCalendarComponent implements OnInit {
       const formData = new FormData();
       formData.append('excel', this.excelFile);
       formData.append('configFile', this.selectedConfig);
-      const response = await fetch('/api/calendar/generate', {
+
+      // URL inteligente: funciona en desarrollo Y producción
+      const apiUrl = this.getApiUrl('/api/calendar/generate');
+      console.log('Generando calendario en:', apiUrl);
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData
       });
@@ -120,6 +125,22 @@ export class GenerateCalendarComponent implements OnInit {
       this.success = null;
     } finally {
       this.loading = false;
+    }
+  }
+
+  // Método para determinar la URL correcta según el entorno
+  private getApiUrl(path: string): string {
+    const isProduction = window.location.hostname !== 'localhost';
+
+    if (isProduction) {
+      // En producción: usar URL absoluta o relativa (mismo dominio)
+      return path; // URL relativa funciona si frontend y backend están en el mismo dominio
+
+      // O usar URL absoluta si están en dominios diferentes:
+      // return 'https://api.tudominio.com' + path;
+    } else {
+      // En desarrollo: usar URL relativa (el proxy se encarga)
+      return path;
     }
   }
 

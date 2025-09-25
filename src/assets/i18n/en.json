@@ -1,6 +1,7 @@
 {
   "nav": {
     "generateCalendar": "Generate Calendar",
+    "jobs": "Jobs",
     "endpoints": "End Points",
     "logs": "Logs",
     "backend": "Backend",

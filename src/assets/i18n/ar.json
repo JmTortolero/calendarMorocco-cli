@@ -1,6 +1,7 @@
-{
+{                                                                                                            
   "nav": {
     "generateCalendar": "إنشاء الجدول",
+    "jobs": "المهام",
     "endpoints": "نقاط النهاية",
     "logs": "السجلات",
     "backend": "الخادم",
