@@ -1,0 +1,20 @@
+# Helm Chart for Calendar Morocco Application
+apiVersion: v2
+name: calendar-morocco
+description: A Helm chart for Calendar Morocco CLI application
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+home: https://github.com/JmTortolero/calendarMorocco-cli
+maintainers:
+  - name: JmTortolero
+    url: https://github.com/JmTortolero
+keywords:
+  - calendar
+  - morocco
+  - football
+  - federation
+  - angular
+  - spring-boot
+sources:
+  - https://github.com/JmTortolero/calendarMorocco-cli

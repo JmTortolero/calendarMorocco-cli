@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "calendar-app.fullname" . }}-config
+  labels:
+    {{- include "calendar-app.labels" . | nindent 4 }}
+data:
+  config-options.yml: |
+    configOptions:
+      - labelKey: 'config.botolaD1'
+        value: {{ .Values.config.botolaD1.value | default "schBotolaD1/SchMoroccoD1.properties" | quote }}
+      - labelKey: 'config.botolaD2'
+        value: {{ .Values.config.botolaD2.value | default "schBotolaD2/SchMoroccoD2.properties" | quote }}
+      - labelKey: 'config.cnpff1'
+        value: {{ .Values.config.cnpff1.value | default "schCNPFF1/MoroccoCNPFF1.properties" | quote }}
+      - labelKey: 'config.cnpff2'
+        value: {{ .Values.config.cnpff2.value | default "schCNPFF2/MoroccoCNPFF2.properties" | quote }}
