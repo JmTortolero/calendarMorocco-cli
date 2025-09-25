@@ -37,18 +37,21 @@
 .status-light{display:block}
 .endpoints-grid{grid-template-columns:1fr}
 .endpoint-header{flex-direction:column}
-.form-row{flex-direction:column}
-.name-input,.url-input{width:100%;margin-bottom:10px}
-.add-button{width:100%}
+.form-row{flex-direction:column;align-items:stretch}
+.form-field{width:100%;margin-bottom:10px}
+.name-input,.url-input{width:100%;min-width:auto}
+.add-button{width:100%;margin-top:10px}
 }
 .custom-endpoint-form{background:#f0f8ff;border:2px dashed #2196F3;padding:15px;margin-bottom:20px}
 .custom-endpoint-form h4{margin:0 0 15px 0;color:#1976D2}
-.form-row{display:flex;gap:10px;flex-wrap:wrap}
-.form-input{padding:8px 12px;border:1px solid #ddd}
-.name-input{flex:1;min-width:180px}
-.url-input{flex:2;min-width:250px}
-.add-button{background:#4CAF50;color:white;border:none;padding:8px 16px;cursor:pointer}
-.add-button:hover:not(:disabled){background:#45a049}
-.add-button:disabled{background:#ccc;cursor:not-allowed}
+.form-row{display:flex;gap:15px;flex-wrap:wrap;align-items:end}
+.form-field{display:flex;flex-direction:column;gap:5px}
+.form-label{font-weight:600;color:#333;font-size:0.9em;margin-bottom:3px}
+.form-input{padding:8px 12px;border:1px solid #ddd;border-radius:4px;font-size:0.9em}
+.name-input{min-width:180px}
+.url-input{min-width:250px;flex:1}
+.add-button{background:#4CAF50;color:white;border:none;padding:10px 20px;cursor:pointer;border-radius:4px;font-weight:600;margin-top:auto}
+.add-button:hover:not(:disabled){background:#45a049;transform:translateY(-1px)}
+.add-button:disabled{background:#ccc;cursor:not-allowed;transform:none}
 .header-actions{display:flex;gap:8px}
 .remove-button{background:#f44336;color:white;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer}

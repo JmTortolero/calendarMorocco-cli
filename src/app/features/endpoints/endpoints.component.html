@@ -44,29 +44,44 @@
       </div>
     </div>
   </div>
-
   <!-- Formulario para endpoint personalizado -->
   <div class="custom-endpoint-form">
     <h4>{{ 'endpoints.customTitle' | translate }}</h4>
     <div class="form-row">
-      <input
-        type="text"
-        [(ngModel)]="customName"
-        [placeholder]="'endpoints.customName' | translate"
-        [attr.aria-label]="'endpoints.customName' | translate"
-        class="form-input name-input">
-      <input
-        type="url"
-        [(ngModel)]="customUrl"
-        [placeholder]="'endpoints.customUrl' | translate"
-        [attr.aria-label]="'endpoints.customUrl' | translate"
-        class="form-input url-input">
-      <button
-        (click)="addCustomEndpoint()"
-        class="add-button"
-        [disabled]="!customUrl.trim()">
-        {{ 'endpoints.addButton' | translate }}
-      </button>
+      <div class="form-field">
+        <label for="customEndpointName" class="form-label">
+          {{ 'endpoints.customName' | translate }}
+        </label>
+        <input
+          id="customEndpointName"
+          type="text"
+          [(ngModel)]="customName"
+          [placeholder]="'endpoints.customName' | translate"
+          [attr.aria-label]="'endpoints.customName' | translate"
+          class="form-input name-input">
+      </div>
+      <div class="form-field">
+        <label for="customEndpointUrl" class="form-label">
+          {{ 'endpoints.customUrl' | translate }}
+        </label>
+        <input
+          id="customEndpointUrl"
+          type="url"
+          [(ngModel)]="customUrl"
+          [placeholder]="'endpoints.customUrl' | translate"
+          [attr.aria-label]="'endpoints.customUrl' | translate"
+          class="form-input url-input"
+          required>
+      </div>
+      <div class="form-field">
+        <button
+          (click)="addCustomEndpoint()"
+          class="add-button"
+          [disabled]="!customUrl.trim()"
+          type="button">
+          {{ 'endpoints.addButton' | translate }}
+        </button>
+      </div>
     </div>
   </div>
 </div>
