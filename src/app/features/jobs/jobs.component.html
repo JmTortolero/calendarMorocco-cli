@@ -1,23 +1,21 @@
-<app-header></app-header>
-
 <div class="jobs-container">
   <div class="jobs-header">
     <h1>🔄 Monitor de Jobs Asíncronos</h1>
     <p class="subtitle">
       Monitoreo en tiempo real de trabajos de generación de calendarios (con demo de 40 segundos)
     </p>
-    
+
     <div class="header-actions">
-      <button 
-        class="btn btn-primary" 
+      <button
+        class="btn btn-primary"
         (click)="toggleCreateForm()"
         [disabled]="isLoading">
         <span *ngIf="!showCreateForm">➕ Crear Nuevo Job</span>
         <span *ngIf="showCreateForm">❌ Cancelar</span>
       </button>
-      
-      <button 
-        class="btn btn-secondary" 
+
+      <button
+        class="btn btn-secondary"
         (click)="refreshJobs()"
         [disabled]="isLoading">
         🔄 Refresh Manual
@@ -31,31 +29,31 @@
     <div class="form-row">
       <div class="form-group">
         <label for="excel">📊 Archivo Excel:</label>
-        <select 
-          id="excel" 
-          [(ngModel)]="newJob.excel" 
+        <select
+          id="excel"
+          [(ngModel)]="newJob.excel"
           class="form-control">
           <option *ngFor="let option of excelOptions" [value]="option">
             {{option}}
           </option>
         </select>
       </div>
-      
+
       <div class="form-group">
         <label for="properties">⚙️ Archivo Properties:</label>
-        <select 
-          id="properties" 
-          [(ngModel)]="newJob.properties" 
+        <select
+          id="properties"
+          [(ngModel)]="newJob.properties"
           class="form-control">
           <option *ngFor="let option of propertiesOptions" [value]="option">
             {{option}}
           </option>
         </select>
       </div>
-      
+
       <div class="form-actions">
-        <button 
-          class="btn btn-success" 
+        <button
+          class="btn btn-success"
           (click)="createAsyncJob()"
           [disabled]="isLoading">
           <span *ngIf="!isLoading">🚀 Crear Job (40s demo)</span>
@@ -82,9 +80,9 @@
       <div class="stats">
         Total: {{jobs.length}} jobs
         <span *ngIf="jobs.length > 0">
-          | 
+          |
           Activos: {{getActiveJobsCount()}}
-          | 
+          |
           Completados: {{getCompletedJobsCount()}}
         </span>
       </div>
@@ -97,13 +95,13 @@
           <span class="status-icon">{{getStatusIcon(job.status)}}</span>
           <span class="status-text">{{job.status}}</span>
         </div>
-        
+
         <div class="job-id">
           <strong>ID:</strong> {{job.id}}
         </div>
-        
+
         <div class="job-actions">
-          <button 
+          <button
             *ngIf="canCancel(job)"
             class="btn btn-danger btn-sm"
             (click)="cancelJob(job.id)">
@@ -124,7 +122,7 @@
             <strong>✅ Completado:</strong> {{formatDate(job.completedAt)}}
           </div>
         </div>
-        
+
         <div class="detail-row" *ngIf="job.startedAt">
           <div class="detail-item">
             <strong>⏱️ Duración:</strong> {{calculateDuration(job.startedAt, job.completedAt)}}
@@ -143,7 +141,7 @@
         <div *ngIf="hasDownloadableFiles(job)" class="result-files">
           <strong>📁 Archivos de resultado:</strong>
           <div class="file-list">
-            <button 
+            <button
               *ngFor="let file of job.resultFiles"
               class="btn btn-link btn-sm file-download"
               (click)="downloadFile(job.id, file)">

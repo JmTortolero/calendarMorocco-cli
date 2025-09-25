@@ -3,12 +3,11 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil, catchError, of, interval } from 'rxjs';
 import { JobsService, Job } from '../../core/services/jobs.service';
-import { HeaderComponent } from '../../shared/components/header/header.component';
 
 @Component({
   selector: 'app-jobs',
   standalone: true,
-  imports: [CommonModule, FormsModule, HeaderComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: './jobs.component.html',
   styleUrl: './jobs.component.css'
 })
@@ -18,11 +17,11 @@ export class JobsComponent implements OnInit, OnDestroy {
 
   // Lista de jobs
   jobs: Job[] = [];
-  
+
   // Estados del componente
   isLoading = false;
   error: string | null = null;
-  
+
   // Formulario para crear nuevo job
   showCreateForm = false;
   newJob = {
@@ -77,7 +76,7 @@ export class JobsComponent implements OnInit, OnDestroy {
         return of([]);
       })
     ).subscribe(jobs => {
-      this.jobs = jobs.sort((a, b) => 
+      this.jobs = jobs.sort((a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       this.isLoading = false;
@@ -90,7 +89,7 @@ export class JobsComponent implements OnInit, OnDestroy {
    */
   startAutoRefresh() {
     console.log('🔄 Iniciando auto-refresh de jobs cada 3 segundos');
-    
+
     interval(3000).pipe(
       takeUntil(this.destroy$)
     ).subscribe(() => {
@@ -122,7 +121,7 @@ export class JobsComponent implements OnInit, OnDestroy {
         console.log('✅ Job creado exitosamente:', job);
         this.jobs.unshift(job); // Agregar al inicio de la lista
         this.showCreateForm = false;
-        
+
         // Iniciar polling para este job específico
         this.startJobPolling(job.id);
       }
@@ -135,7 +134,7 @@ export class JobsComponent implements OnInit, OnDestroy {
    */
   startJobPolling(jobId: string) {
     console.log(`🔄 Iniciando polling para job ${jobId}`);
-    
+
     this.jobsService.pollJobStatus(jobId).pipe(
       takeUntil(this.destroy$),
       catchError(error => {
@@ -159,7 +158,7 @@ export class JobsComponent implements OnInit, OnDestroy {
    */
   cancelJob(jobId: string) {
     console.log(`🛑 Cancelando job ${jobId}`);
-    
+
     this.jobsService.cancelJob(jobId).pipe(
       takeUntil(this.destroy$),
       catchError(error => {
@@ -219,12 +218,12 @@ export class JobsComponent implements OnInit, OnDestroy {
    */
   calculateDuration(startDate?: string, endDate?: string): string {
     if (!startDate) return 'N/A';
-    
+
     const start = new Date(startDate);
     const end = endDate ? new Date(endDate) : new Date();
     const diffMs = end.getTime() - start.getTime();
     const diffSecs = Math.floor(diffMs / 1000);
-    
+
     if (diffSecs < 60) {
       return `${diffSecs}s`;
     } else if (diffSecs < 3600) {
@@ -249,8 +248,8 @@ export class JobsComponent implements OnInit, OnDestroy {
    * Helper: Verificar si un job tiene archivos para descargar
    */
   hasDownloadableFiles(job: Job): boolean {
-    return job.status === 'COMPLETED' && 
-           job.resultFiles !== undefined && 
+    return job.status === 'COMPLETED' &&
+           job.resultFiles !== undefined &&
            job.resultFiles.length > 0;
   }
 
