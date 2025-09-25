@@ -92,7 +92,7 @@ export class GenerateCalendarComponent implements OnInit {
       const formData = new FormData();
       formData.append('excel', this.excelFile);
       formData.append('configFile', this.selectedConfig);
-      const response = await fetch('https://localhost/api/generate', {
+      const response = await fetch('/api/calendar/generate', {
         method: 'POST',
         body: formData
       });
