@@ -1,5 +1,4 @@
 import { Component, OnInit, inject, DestroyRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { MonitorService } from '../../core/services/monitor.service';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
 import { TranslationService } from '../../core/services/translation.service';
@@ -9,7 +8,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 @Component({
   selector: 'app-logs',
   standalone: true,
-  imports: [CommonModule, TranslatePipe],
+  imports: [TranslatePipe], // Angular 20: No need for CommonModule with @if/@for
   templateUrl: './logs.component.html',
   styleUrl: './logs.component.css'
 })

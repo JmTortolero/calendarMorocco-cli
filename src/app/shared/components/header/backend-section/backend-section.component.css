@@ -4,6 +4,10 @@
   align-items: center;
   padding: 1rem;
   flex: 1;
+  /* EVITAR MOVIMIENTO Y SUPERPOSICIÓN */
+  position: relative;
+  overflow: visible;
+  min-height: 60px;
 }
 
 .controls-container {
@@ -20,6 +24,12 @@
   /* ORDEN FIJO ABSOLUTO */
   direction: ltr !important;
   flex-direction: row !important;
+  /* EVITAR MOVIMIENTO Y SUPERPOSICIÓN */
+  flex-shrink: 0;
+  width: fit-content;
+  max-width: 100%;
+  position: relative;
+  z-index: 10;
 }
 
 .language-selector {
@@ -68,11 +78,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 10px 16px;
   border: none;
   border-radius: 20px;
   font-weight: 600;
-  font-size: 0.85em;
   text-align: center;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -81,7 +90,14 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   background: rgba(255, 255, 255, 0.15);
   color: #ffffff;
-  min-width: 140px;
+  /* TAMAÑO FIJO PARA EVITAR MOVIMIENTO */
+  min-width: 160px;
+  max-width: 160px;
+  width: 160px;
+  flex-shrink: 0;
+  justify-content: center;
+  overflow: hidden;
+  min-height: 44px;
 }
 
 .status-button:hover:not(:disabled) {
@@ -115,6 +131,18 @@
   box-shadow: 0 0 15px rgba(220, 53, 69, 0.5);
 }
 
+/* REGLAS ESPECÍFICAS PARA EVITAR MOVIMIENTO EN ESTADOS */
+.status-button.offline,
+.status-button.online,
+.status-button.checking,
+.status-button.unknown {
+  /* Forzar mismo tamaño para todos los estados */
+  width: 160px !important;
+  min-width: 160px !important;
+  max-width: 160px !important;
+  box-sizing: border-box;
+}
+
 .status-button.unknown {
   background: #6c757d;
   color: white;
@@ -138,11 +166,35 @@
 }
 
 .status-icon {
-  font-size: 1em;
+  font-size: 1.1em;
+  flex-shrink: 0;
 }
 
 .status-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.status-label {
+  font-size: 0.65em;
+  opacity: 0.8;
+  font-weight: 500;
+  line-height: 1;
   white-space: nowrap;
+}
+
+.status-value {
+  font-size: 0.85em;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 /* Keyframes eliminadas - ya no se usa animación automática */
@@ -150,6 +202,9 @@
 /* RTL Support - POSICIÓN FIJA SIEMPRE */
 .backend-section {
   direction: ltr !important; /* Forzar siempre LTR para posición fija */
+  /* EVITAR SUPERPOSICIÓN ABSOLUTA */
+  contain: layout;
+  isolation: isolate;
 }
 
 .controls-container {
@@ -186,23 +241,67 @@
 @media (max-width: 768px) {
   .backend-section {
     padding: 0.5rem;
+    min-height: 50px;
   }
 
   .controls-container {
     gap: 10px;
     padding: 0.6rem 1rem;
-    flex-wrap: wrap;
+    flex-wrap: nowrap; /* NO permitir wrap para evitar movimiento */
     justify-content: center;
     direction: ltr !important; /* Mantener orden fijo en móvil también */
+    width: auto;
+    max-width: 95%;
+  }
+
+  .status-button {
+    min-width: 120px;
+    max-width: 120px;
+    width: 120px;
+    padding: 8px 12px;
+    min-height: 40px;
   }
 
   .status-label {
-    font-size: 0.9em;
+    font-size: 0.55em;
   }
 
-  .status-indicator {
-    font-size: 0.8em;
+  .status-value {
+    font-size: 0.75em;
+  }
+
+  .lang-button {
     padding: 6px 10px;
-    min-width: 65px;
+    font-size: 0.8em;
+    min-width: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .controls-container {
+    gap: 8px;
+    padding: 0.5rem 0.8rem;
+  }
+
+  .status-button {
+    min-width: 100px;
+    max-width: 100px;
+    width: 100px;
+    padding: 6px 10px;
+    min-height: 36px;
+  }
+
+  .status-label {
+    font-size: 0.5em;
+  }
+
+  .status-value {
+    font-size: 0.65em;
+  }
+
+  .lang-button {
+    padding: 5px 8px;
+    font-size: 0.75em;
+    min-width: 28px;
   }
 }

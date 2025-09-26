@@ -15,12 +15,16 @@
   <div class="logs-window-container">
     <h3>{{ 'logs.backendInfo' | translate }}</h3>
     <div class="logs-window">
-      <div *ngFor="let log of logs" class="log-entry">
-        {{ log }}
-      </div>
-      <div *ngIf="logs.length === 0" class="log-entry no-logs">
-        {{ 'logs.noLogs' | translate }}
-      </div>
+      @for (log of logs; track log) {
+        <div class="log-entry">
+          {{ log }}
+        </div>
+      }
+      @if (logs.length === 0) {
+        <div class="log-entry no-logs">
+          {{ 'logs.noLogs' | translate }}
+        </div>
+      }
     </div>
   </div>
 

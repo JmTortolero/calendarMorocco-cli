@@ -6,6 +6,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
 import { TranslationService } from '../../core/services/translation.service';
 import { ConfigService, ConfigOption } from '../../core/services/config.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-generate-calendar',
@@ -46,7 +47,7 @@ export class GenerateCalendarComponent implements OnInit {
         console.log('📋 GenerateCalendar: Options updated:', options.length);
         console.log('📋 GenerateCalendar: Options details:', options);
         this.configOptions = options;
-        
+
         // Log adicional para debugging
         if (options.length > 0) {
           console.log('✅ Config options loaded successfully:');
@@ -109,7 +110,7 @@ export class GenerateCalendarComponent implements OnInit {
     console.log("📂 Excel file:", this.excelFile?.name || 'No file');
     console.log("⚙️ Selected config:", this.selectedConfig || 'No config');
     console.log("📋 Config options count:", this.configOptions.length);
-    
+
     // Validaciones mejoradas
     if (!this.excelFile || !this.selectedConfig) {
       this.error = this.translationService.translate('calendar.errorFileConfig');
@@ -120,7 +121,7 @@ export class GenerateCalendarComponent implements OnInit {
     console.log("🔍 DEBUG - Available options:", this.configOptions);
     console.log("🔍 DEBUG - ConfigService current options:", this.configService.getCurrentOptions());
     console.log("🔍 DEBUG - ConfigService hasOption result:", this.configService.hasOption(this.selectedConfig));
-    
+
     // Verificar que la configuración seleccionada existe (solo si hay opciones cargadas)
     if (this.configOptions.length > 0 && !this.configService.hasOption(this.selectedConfig)) {
       this.error = `Selected configuration '${this.selectedConfig}' is not valid or no longer available. Available options: ${this.configOptions.map(o => o.value).join(', ')}`;
@@ -142,18 +143,75 @@ export class GenerateCalendarComponent implements OnInit {
     this.error = null;
     this.success = null;
     try {
+      // Validaciones detalladas
+      console.log('=== INICIO GENERACIÓN CALENDARIO ===');
+      console.log('Excel file:', this.excelFile);
+      console.log('Excel file name:', this.excelFile?.name);
+      console.log('Excel file size:', this.excelFile?.size);
+      console.log('Excel file type:', this.excelFile?.type);
+      console.log('Selected config:', this.selectedConfig);
+      console.log('Selected config type:', typeof this.selectedConfig);
+
+      // Preparar nombre del archivo de propiedades
+      const finalPropertiesName = this.selectedConfig.endsWith('.properties')
+        ? this.selectedConfig
+        : `${this.selectedConfig}.properties`;
+      console.log('Properties name to send:', finalPropertiesName);
+
+      if (!this.excelFile) {
+        throw new Error('No Excel file selected');
+      }
+      if (!this.selectedConfig) {
+        throw new Error('No configuration file selected');
+      }
+
       const formData = new FormData();
       formData.append('excel', this.excelFile);
-      formData.append('configFile', this.selectedConfig);
+
+      // El backend espera el nombre del archivo de propiedades como string
+      // Agregar extensión .properties si no la tiene
+      const propertiesName = this.selectedConfig.endsWith('.properties')
+        ? this.selectedConfig
+        : `${this.selectedConfig}.properties`;
+      formData.append('properties', propertiesName);
+
+      console.log('FormData created successfully');
+      console.log('FormData entries:');
+      for (let [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`  ${key}: File("${value.name}", ${value.size} bytes, ${value.type})`);
+        } else {
+          console.log(`  ${key}: "${value}" (string)`);
+        }
+      }
 
       const apiUrl = this.getApiUrl('/api/calendar/generate');
-      console.log('Generando calendario en:', apiUrl);
+      console.log('API URL:', apiUrl);
 
+      console.log('Sending POST request...');
       const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData
       });
-      if (!response.ok) throw new Error(this.translationService.translate('calendar.errorGenerate'));
+
+      console.log('Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorText = await response.text();
+          console.error('Error response body:', errorText);
+          errorMessage += ` - ${errorText}`;
+        } catch (e) {
+          console.error('Could not read error response body:', e);
+        }
+        throw new Error(errorMessage);
+      }
       const blob = await response.blob();
       const contentDisposition = response.headers.get('Content-Disposition');
       let filename = 'calendario.xlsx';
@@ -172,20 +230,29 @@ export class GenerateCalendarComponent implements OnInit {
         document.body.removeChild(a);
       }, 100);
       this.success = this.translationService.translate('calendar.success');
+      console.log('=== CALENDARIO GENERADO EXITOSAMENTE ===');
     } catch (e: any) {
+      console.error('=== ERROR EN GENERACIÓN DE CALENDARIO ===');
+      console.error('Error object:', e);
+      console.error('Error message:', e.message);
+      console.error('Error stack:', e.stack);
+
       this.error = e.message || this.translationService.translate('calendar.errorUnknown');
       this.success = null;
     } finally {
       this.loading = false;
+      console.log('=== FIN GENERACIÓN CALENDARIO ===');
     }
   }
 
   private getApiUrl(path: string): string {
     const isProduction = window.location.hostname !== 'localhost';
     if (isProduction) {
+      // En producción, usar rutas relativas (Nginx proxy)
       return path;
     } else {
-      return path;
+      // En desarrollo, usar la URL completa del backend
+      return `${environment.backend.baseUrl}${path}`;
     }
   }
 
