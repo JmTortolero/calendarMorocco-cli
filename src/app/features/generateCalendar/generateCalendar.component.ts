@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { firstValueFrom } from 'rxjs';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
 import { TranslationService } from '../../core/services/translation.service';
 import { ConfigService, ConfigOption } from '../../core/services/config.service';
@@ -188,47 +189,108 @@ export class GenerateCalendarComponent implements OnInit {
       const apiUrl = this.getApiUrl('/api/calendar/generate');
       console.log('API URL:', apiUrl);
 
-      console.log('Sending POST request...');
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        body: formData
-      });
+      // Verificar conectividad del backend antes de enviar archivos
+      console.log('🔍 Verificando conectividad del backend...');
+      console.log('🌐 Health check URL:', this.getApiUrl('/actuator/health'));
 
-      console.log('Response received:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries())
-      });
+      try {
+        const healthCheck = await firstValueFrom(this.http.get(this.getApiUrl('/actuator/health')));
+        console.log('✅ Backend conectado y funcionando:', healthCheck);
+      } catch (healthError: any) {
+        console.error('❌ Health check falló:', {
+          status: healthError.status,
+          message: healthError.message,
+          url: healthError.url
+        });
 
-      if (!response.ok) {
-        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-        try {
-          const errorText = await response.text();
-          console.error('Error response body:', errorText);
-          errorMessage += ` - ${errorText}`;
-        } catch (e) {
-          console.error('Could not read error response body:', e);
+        // Si es error CORS (status 0), intentar de todos modos
+        if (healthError.status === 0) {
+          console.log('⚠️ Posible problema de CORS, continuando de todos modos...');
+          console.log('💡 El backend parece estar corriendo, intentando la generación...');
+        } else {
+          throw new Error(`❌ Backend no disponible (${healthError.status}): ${healthError.message}`);
         }
-        throw new Error(errorMessage);
       }
-      const blob = await response.blob();
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = 'calendario.xlsx';
-      if (contentDisposition) {
-        const match = contentDisposition.match(/filename="?([^";]+)"?/);
-        if (match) filename = match[1];
+
+      console.log('🚀 Sending POST request with HttpClient...');
+      console.log('🌐 Target URL:', apiUrl);
+      console.log('📦 Sending FormData with entries:');
+      for (let [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`   ${key}: File("${value.name}", ${value.size} bytes)`);
+        } else {
+          console.log(`   ${key}: "${value}"`);
+        }
       }
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }, 100);
+
+      try {
+        // Usar HttpClient de Angular para mejor manejo de archivos
+        const response = await firstValueFrom(this.http.post(apiUrl, formData, {
+          responseType: 'blob',
+          observe: 'response',
+          headers: {
+            // No agregar Content-Type, FormData lo maneja automáticamente
+            'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/octet-stream,*/*'
+          }
+        }));
+
+        console.log('📨 Response received:', {
+          status: response?.status,
+          ok: response?.status === 200,
+          headers: response?.headers.keys()
+        });
+
+        if (!response || response.status !== 200) {
+          throw new Error(`HTTP ${response?.status}: Error en la descarga`);
+        }
+
+        const blob = response.body;
+        if (!blob || blob.size === 0) {
+          throw new Error('❌ Archivo vacío recibido del backend');
+        }
+
+        console.log('📊 Blob info:', { size: blob.size, type: blob.type });
+
+        // Obtener nombre del archivo de los headers
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = 'calendario.xlsx';
+        if (contentDisposition) {
+          const matches = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+          if (matches && matches[1]) {
+            filename = matches[1].replace(/['"]/g, '');
+          }
+        }
+        console.log('📂 Filename:', filename);
+
+        // Descargar archivo usando el método más confiable
+        this.downloadFile(blob, filename);
+
+      } catch (httpError: any) {
+        console.error('🚨 HTTP Error Details:', {
+          name: httpError.name,
+          message: httpError.message,
+          status: httpError.status,
+          statusText: httpError.statusText,
+          url: httpError.url,
+          error: httpError.error
+        });
+
+        // Diagnóstico específico para errores comunes
+        if (httpError.status === 0) {
+          throw new Error(`❌ No se puede conectar al backend en ${apiUrl}. Verifica:\n` +
+            `• El backend está corriendo en puerto 8080\n` +
+            `• CORS está configurado correctamente\n` +
+            `• No hay firewall bloqueando la conexión`);
+        } else if (httpError.status === 404) {
+          throw new Error(`❌ Endpoint no encontrado: ${apiUrl}\nVerifica que el backend tenga el endpoint /api/calendar/generate`);
+        } else if (httpError.status === 400) {
+          throw new Error(`❌ Petición incorrecta (400): ${httpError.error?.message || 'Datos inválidos enviados al backend'}`);
+        } else if (httpError.status === 500) {
+          throw new Error(`❌ Error interno del servidor (500): ${httpError.error?.message || 'Error procesando la petición'}`);
+        } else {
+          throw new Error(`❌ Error HTTP ${httpError.status}: ${httpError.statusText || httpError.message}`);
+        }
+      }
       this.success = this.translationService.translate('calendar.success');
       console.log('=== CALENDARIO GENERADO EXITOSAMENTE ===');
     } catch (e: any) {
@@ -246,13 +308,56 @@ export class GenerateCalendarComponent implements OnInit {
   }
 
   private getApiUrl(path: string): string {
-    const isProduction = window.location.hostname !== 'localhost';
-    if (isProduction) {
-      // En producción, usar rutas relativas (Nginx proxy)
-      return path;
-    } else {
-      // En desarrollo, usar la URL completa del backend
-      return `${environment.backend.baseUrl}${path}`;
+    // SIEMPRE usar rutas relativas para que funcione con el proxy de Angular
+    // El proxy.conf.json se encarga de redirigir a localhost:8080
+    return path;
+  }
+
+  /**
+   * Método confiable para descargar archivos
+   */
+  private downloadFile(blob: Blob, filename: string): void {
+    console.log(`📥 Iniciando descarga: ${filename} (${blob.size} bytes)`);
+
+    try {
+      // Método 1: Usando createObjectURL (más compatible)
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.style.display = 'none';
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Cleanup después de un momento
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+      console.log('✅ Descarga iniciada correctamente');
+
+    } catch (error) {
+      console.error('❌ Error en descarga método 1:', error);
+
+      try {
+        // Método 2: Fallback usando FileReader
+        console.log('🔄 Intentando método alternativo...');
+        const reader = new FileReader();
+        reader.onload = () => {
+          const link = document.createElement('a');
+          link.href = reader.result as string;
+          link.download = filename;
+          link.click();
+          console.log('✅ Descarga iniciada con método alternativo');
+        };
+        reader.readAsDataURL(blob);
+
+      } catch (fallbackError) {
+        console.error('❌ Error en método alternativo:', fallbackError);
+        throw new Error('No se pudo iniciar la descarga del archivo');
+      }
     }
   }
 

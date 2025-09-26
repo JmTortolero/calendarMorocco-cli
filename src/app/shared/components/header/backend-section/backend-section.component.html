@@ -34,13 +34,15 @@
              isBackendOnline === false ? '🔴' : '❓' }}
         </span>
 
-        <span class="status-text">
-          {{ 'nav.backend' | translate }}:
-          {{ isChecking ? ('nav.checking' | translate) :
-             isBackendOnline === true ? ('nav.online' | translate) :
-             isBackendOnline === false ? ('nav.offline' | translate) :
-             ('nav.notChecked' | translate) }}
-        </span>
+        <div class="status-text">
+          <div class="status-label">{{ 'nav.backend' | translate }}</div>
+          <div class="status-value">
+            {{ isChecking ? ('nav.checking' | translate) :
+               isBackendOnline === true ? ('nav.online' | translate) :
+               isBackendOnline === false ? ('nav.offline' | translate) :
+               ('nav.notChecked' | translate) }}
+          </div>
+        </div>
       </button>
     </div>
   </div>
