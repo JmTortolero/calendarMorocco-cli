@@ -2,24 +2,50 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { map, catchError, timeout, tap } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class MonitorService {
-  private readonly apiUrl = '';
-
-  // Angular 20 Best Practice: inject() function
   private readonly http = inject(HttpClient);
 
+  // SOLO URLs directas al backend puerto 8080 - NO usar proxy
 
+
+
+  /**
+   * Construye URL para endpoints del actuator
+   */
+  private buildActuatorUrl(endpoint: string): string {
+    const baseUrl = environment.backend.baseUrl;
+    const actuatorPath = environment.api.actuator;
+    const fullUrl = `${baseUrl}${actuatorPath}${endpoint}`;
+
+    console.log('🔗 MonitorService URL Builder:', {
+      environment: environment.production ? 'production' : 'development',
+      baseUrl,
+      actuatorPath,
+      endpoint,
+      fullUrl
+    });
+
+    return fullUrl;
+  }
+
+  /**
+   * Obtiene la URL base del backend (legacy - para compatibilidad)
+   */
+  private getBackendUrl(): string {
+    return environment.backend.baseUrl;
+  }
 
   checkBackendStatus(): Observable<boolean> {
-    console.log('🔍 Verificando estado del backend en:', `${this.apiUrl}/actuator/health`);
-    console.log('🕐 Timestamp:', new Date().toISOString());
+    const healthUrl = this.buildActuatorUrl('/health');
+    console.log('🔍 Verificando estado del backend en:', healthUrl);
 
-    // Enfoque más simple: usar responseType 'text' para evitar problemas de parsing JSON
-    return this.http.get(`${this.apiUrl}/actuator/health`, {
+    // Usar URL configurada desde environment
+    return this.http.get(healthUrl, {
       observe: 'response',
       responseType: 'text', // Cambiar a text para evitar problemas de parsing
       headers: {
@@ -39,10 +65,28 @@ export class MonitorService {
         console.log('✅ Procesando respuesta en MAP (no en catchError)');
         console.log('📊 Status code:', response.status);
 
-        // Solo considerar online si es HTTP 200
+        const body = response.body || '';
+        const contentType = response.headers.get('content-type') || '';
+
+        // Detectar falsos HTTP 200 también en checkBackendStatus
         if (response.status === 200) {
-          console.log('🟢 Backend marcado como ONLINE (HTTP 200 en MAP correctamente)');
-          return true;
+          // Si el content-type es HTML cuando esperamos JSON para /actuator/health
+          if (contentType.includes('text/html')) {
+            console.log('🚨 BACKEND CHECK: HTTP 200 pero content-type es HTML - Falso positivo');
+            return false;
+          }
+
+          // Intentar validar que es una respuesta legítima de Spring Actuator
+          try {
+            JSON.parse(body);
+            console.log('🟢 Backend marcado como ONLINE (HTTP 200 con JSON válido)', body);
+            return true;
+          } catch {
+            console.log(
+              `🔴 catch Backend respondió con status ${response.status}, considerando OFFLINE`
+            );
+            return false;
+          }
         } else {
           console.log(`🔴 Backend respondió con status ${response.status}, considerando OFFLINE`);
           return false;
@@ -60,8 +104,9 @@ export class MonitorService {
           type: typeof error,
           constructor: error.constructor.name
         });
-        console.log('⏰ Timestamp del error:', new Date().toISOString());
 
+        // NO usar fallbacks al proxy - solo backend directo
+        console.log('🚨 Sin fallbacks - Solo backend directo puerto 8080');
         // DIAGNÓSTICO: Si vemos HTTP 200 aquí, aún hay un problema
         if (error.status === 200) {
           console.log('🚨 PROBLEMA PERSISTE: HTTP 200 sigue llegando al catchError');
@@ -88,10 +133,8 @@ export class MonitorService {
         } else {
           console.log(`🚨 ERROR HTTP ${error.status}: ${error.statusText}`);
         }
-
         console.log('🔴 Backend marcado como OFFLINE - No hay fallbacks');
         console.log('⚠️  Para debugging: verifica que el backend esté corriendo en puerto 8080');
-
         // NO hacer fallbacks - si falla el health endpoint, es que está offline
         return of(false);
       })
@@ -100,26 +143,22 @@ export class MonitorService {
 
   getLogs(): Observable<string[]> {
     console.log('Obteniendo información del backend Spring Boot...');
+    const infoUrl = this.buildActuatorUrl('/info');
 
-    // Intentamos obtener información de los actuator endpoints
-    return this.http.get(`${this.apiUrl}/actuator/info`).pipe(
+    // Usar URL configurada desde environment
+    return this.http.get(infoUrl).pipe(
       timeout(60000),
       map((info: any) => {
         console.log('Info del backend:', info);
         const timestamp = new Date().toISOString();
         return [
-          `[${timestamp}] === INFORMACIÓN DEL BACKEND SPRING BOOT ===`,
-          `[${timestamp}] Backend: ONLINE en ${this.apiUrl}`,
-          `[${timestamp}] Información: ${JSON.stringify(info, null, 2)}`,
-          `[${timestamp}] Endpoints disponibles: /actuator/health, /actuator/info`,
-          `[${timestamp}] Puerto: 8080`,
-          `[${timestamp}] === FIN DE LA INFORMACIÓN ===`
-        ];
+            ];
       }),
       catchError(error => {
         console.log('Info no disponible, intentando health...');
+        const healthUrl = this.buildActuatorUrl('/health');
 
-        return this.http.get(`${this.apiUrl}/actuator/health`).pipe(
+        return this.http.get(healthUrl).pipe(
           timeout(5000),
           map((health: any) => {
             const timestamp = new Date().toISOString();
@@ -127,7 +166,7 @@ export class MonitorService {
               `[${timestamp}] === ESTADO DEL BACKEND ===`,
               `[${timestamp}] Health Status: ${health.status || 'UP'}`,
               `[${timestamp}] Backend Spring Boot está corriendo`,
-              `[${timestamp}] URL: ${this.apiUrl}`,
+              `[${timestamp}] URL: ${healthUrl}`,
               `[${timestamp}] Health Details: ${JSON.stringify(health, null, 2)}`,
               `[${timestamp}] === FIN DEL ESTADO ===`
             ];
@@ -135,25 +174,7 @@ export class MonitorService {
           catchError(() => {
             const timestamp = new Date().toISOString();
             return of([
-              `[${timestamp}] 🚨 PROBLEMA CORS DETECTADO`,
-              `[${timestamp}] Backend Spring Boot está corriendo en puerto 8080`,
-              `[${timestamp}] Pero Angular no puede conectarse debido a CORS`,
-              `[${timestamp}] `,
-              `[${timestamp}] SOLUCIÓN - Agrega esta clase a tu backend:`,
-              `[${timestamp}] `,
-              `[${timestamp}] @Configuration`,
-              `[${timestamp}] @EnableWebMvc`,
-              `[${timestamp}] public class WebConfig implements WebMvcConfigurer {`,
-              `[${timestamp}]     @Override`,
-              `[${timestamp}]     public void addCorsMappings(CorsRegistry registry) {`,
-              `[${timestamp}]         registry.addMapping("/**")`,
-              `[${timestamp}]                 .allowedOrigins("http://localhost:4200")`,
-              `[${timestamp}]                 .allowedMethods("GET", "POST", "PUT", "DELETE")`,
-              `[${timestamp}]                 .allowedHeaders("*");`,
-              `[${timestamp}]     }`,
-              `[${timestamp}] }`,
-              `[${timestamp}] `,
-              `[${timestamp}] Después reinicia el backend Spring Boot`
+
             ]);
           })
         );
@@ -173,7 +194,7 @@ export class MonitorService {
       '/api',
       '/error'
     ];
-    const baseUrl = ''; // Usar proxy
+    const baseUrl = this.getBackendUrl(); // Usar backend directo
 
     console.log('Descubriendo endpoints Spring Boot disponibles...');
 
@@ -185,7 +206,7 @@ export class MonitorService {
       endpoints.forEach(endpoint => {
         const url = `${baseUrl}${endpoint}`;
         this.http.get(url, { responseType: 'text' }).pipe(
-          timeout(5000),
+          timeout(2000),
           map(() => `✅ ${url} - DISPONIBLE`),
           catchError(error => of(`❌ ${url} - ERROR: ${error.status || 'No responde'}`))
         ).subscribe(result => {
@@ -203,10 +224,10 @@ export class MonitorService {
 
   // Método para verificar un endpoint específico
   checkSingleEndpoint(url: string): Observable<any> {
-    console.log('🔍 Verificando endpoint:', url);
-    console.log('🕐 Timestamp:', new Date().toISOString());
-
-    return this.http.get(url, {
+    // Si la URL es relativa (no empieza con http), convertirla a absoluta usando el backend
+    const finalUrl = url.startsWith('http') ? url : `${this.getBackendUrl()}${url}`;
+    console.log('🔍 Verificando endpoint: ', finalUrl);
+    return this.http.get(finalUrl, {
       responseType: 'text',
       observe: 'response',
       headers: {
@@ -217,21 +238,85 @@ export class MonitorService {
     }).pipe(
       timeout(3000), // Reducir timeout
       map(response => {
-        console.log(`Endpoint ${url} respondió con status: ${response.status}`);
+        console.log(`Endpoint ${finalUrl} respondió con status: ${response.status}`);
+        const body = response.body || '';
+        const contentType = response.headers.get('content-type') || '';
 
-        // Solo códigos 2xx son considerados exitosos
-        if (response.status >= 200 && response.status < 300) {
+        console.log(`Content-Type: ${contentType}`);
+        console.log(`Body preview: ${body.substring(0, 200)}`);
+
+        // DETECCIÓN DE FALSOS HTTP 200 DEL PROXY ANGULAR
+        // Si recibimos HTTP 200 pero el contenido es HTML con errores, es un falso positivo
+        if (response.status === 200) {
+          // Si el content-type es text/html cuando esperamos JSON, es sospechoso
+          if (contentType.includes('text/html')) {
+            console.log('🚨 PROXY ERROR DETECTADO: HTTP 200 pero content-type es HTML');
+
+            // Buscar indicadores de páginas de error comunes
+            const bodyLower = body.toLowerCase();
+            const errorIndicators = [
+              'cannot get',
+              'error occurred',
+              'proxy error',
+              'connection refused',
+              'econnrefused',
+              'bad gateway',
+              'service unavailable',
+              '404',
+              '500',
+              '502',
+              '503',
+              'nginx',
+              'apache'
+            ];
+
+            const hasErrorIndicator = errorIndicators.some(indicator =>
+              bodyLower.includes(indicator)
+            );
+
+            if (hasErrorIndicator) {
+              console.log('🔴 FALSE HTTP 200 DETECTADO - Marcando como error');
+              return {
+                status: 502, // Simular Bad Gateway ya que el proxy falló
+                message: 'Error: Proxy devolvió página de error HTML',
+                body: body.substring(0, 100),
+                error: true
+              };
+            }
+          }
+
+          // Si esperamos JSON para endpoints específicos
+          if (url.includes('/actuator/') || url.includes('/api/')) {
+            // Intentar parsear como JSON
+            try {
+              JSON.parse(body);
+              // Si se parsea correctamente, es válido
+              console.log('✅ HTTP 200 válido con JSON');
+            } catch {
+              // Si no se puede parsear como JSON, probablemente es HTML de error
+              console.log('🔴 HTTP 200 inválido - No es JSON válido');
+              return {
+                status: 502,
+                message: 'Error: Respuesta no es JSON válido',
+                body: body.substring(0, 100),
+                error: true
+              };
+            }
+          }
+
+          // Si llegamos aquí, es un HTTP 200 legítimo
           return {
             status: response.status,
             message: `HTTP ${response.status} - OK`,
-            body: response.body?.substring(0, 100) || 'Sin contenido',
+            body: body.substring(0, 100),
             error: false
           };
         } else {
+          // Status codes que no son 2xx
           return {
             status: response.status,
             message: `HTTP ${response.status} - Error`,
-            body: response.body?.substring(0, 100) || 'Sin contenido',
+            body: body.substring(0, 100),
             error: true
           };
         }
@@ -242,13 +327,15 @@ export class MonitorService {
           status: error.status,
           statusText: error.statusText,
           message: error.message,
-          url: url
+          url: finalUrl
         });
 
         let errorMessage = 'Error desconocido';
 
         if (error.status === 0) {
-          errorMessage = 'Servidor no responde o proxy falló';
+          errorMessage = 'Servidor no responde o error de red';
+        } else if (error.status === 403) {
+          errorMessage = 'Error CORS - Backend rechaza solicitud cross-origin';
         } else if (error.status === 502) {
           errorMessage = 'Bad Gateway - Proxy no puede conectar';
         } else if (error.status === 503) {
@@ -263,7 +350,7 @@ export class MonitorService {
           errorMessage = `HTTP ${error.status} - ${error.statusText}`;
         }
 
-        console.log(`🔴 Endpoint ${url} marcado como OFFLINE: ${errorMessage}`);
+        console.log(`🔴 Endpoint ${finalUrl} marcado como OFFLINE: ${errorMessage}`);
 
         return of({
           status: error.status || 0,

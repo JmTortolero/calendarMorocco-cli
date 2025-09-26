@@ -16,16 +16,32 @@
       </button>
     </div>
 
-    <!-- Estado del backend -->
+    <!-- Estado del backend como botón clickeable -->
     <div class="backend-status">
-      <span class="status-label">{{ 'nav.backend' | translate }}:</span>
-      <div
-        class="status-indicator"
-        [class.online]="isBackendOnline"
-        [class.offline]="!isBackendOnline"
-      >
-        {{ isBackendOnline ? ('nav.online' | translate) : ('nav.offline' | translate) }}
-      </div>
+      <button
+        class="status-button"
+        (click)="checkBackendStatus()"
+        [disabled]="isChecking"
+        [class.online]="isBackendOnline === true"
+        [class.offline]="isBackendOnline === false"
+        [class.unknown]="isBackendOnline === null"
+        [class.checking]="isChecking"
+        [title]="'nav.clickToCheck' | translate">
+
+        <span class="status-icon">
+          {{ isChecking ? '⏳' :
+             isBackendOnline === true ? '🟢' :
+             isBackendOnline === false ? '🔴' : '❓' }}
+        </span>
+
+        <span class="status-text">
+          {{ 'nav.backend' | translate }}:
+          {{ isChecking ? ('nav.checking' | translate) :
+             isBackendOnline === true ? ('nav.online' | translate) :
+             isBackendOnline === false ? ('nav.offline' | translate) :
+             ('nav.notChecked' | translate) }}
+        </span>
+      </button>
     </div>
   </div>
 </div>

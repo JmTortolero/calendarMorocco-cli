@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { MonitorService } from '../../core/services/monitor.service';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
 import { TranslationService } from '../../core/services/translation.service';
-import { interval } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 interface EndpointStatus {
@@ -34,31 +33,37 @@ export class EndpointsComponent implements OnInit {
   private readonly monitorService = inject(MonitorService);
   private readonly destroyRef = inject(DestroyRef);
 
-  endpoints: EndpointStatus[] = [
-    { name: 'Raíz', url: '', path: '', status: 'offline', message: 'No verificado' },
-    { name: 'Actuator', url: '', path: '/actuator', status: 'offline', message: 'No verificado' },
-    { name: 'Health', url: '', path: '/actuator/health', status: 'offline', message: 'No verificado' },
-    { name: 'Info', url: '', path: '/actuator/info', status: 'offline', message: 'No verificado' },
-    { name: 'Mappings', url: '', path: '/actuator/mappings', status: 'offline', message: 'No verificado' },
-    { name: 'API', url: '', path: '/api', status: 'offline', message: 'No verificado' },
-    { name: 'Error', url: '', path: '/error', status: 'offline', message: 'No verificado' },
-    { name: 'Test 404', url: '', path: '/endpoint-que-no-existe', status: 'offline', message: 'Test endpoint para probar errores' }
-  ];
+  // Determinar la URL base del backend
+  private getBackendUrl(): string {
+    // En producción o cuando esté configurado, usar la URL del backend
+    if (window.location.hostname !== 'localhost') {
+      return `${window.location.protocol}//${window.location.hostname}:8080`;
+    }
+    // En desarrollo, usar localhost
+    return 'http://localhost:8080';
+  }
+
+  endpoints: EndpointStatus[] = [];
 
   ngOnInit() {
-    console.log('EndpointsComponent inicializado - Verificación automática cada 2 segundos');
+    console.log('EndpointsComponent inicializado - Verificación SOLO manual');
 
-    // Angular 20 Best Practice: takeUntilDestroyed()
-    interval(1000)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        console.log('Verificación automática de endpoints...');
-        this.checkBackendStatus();
-      });
+    // Inicializar endpoints con URLs absolutas directas al backend puerto 8080
+    console.log('Inicializando endpoints con URLs directas al backend puerto 8080...');
 
-    // Verificación inicial
-    console.log('Iniciando verificación inicial de endpoints...');
-    this.checkBackendStatus();
+    this.endpoints = [
+      // TODOS los endpoints van directamente al backend (puerto 8080) - NO usar proxy
+      { name: 'Actuator', url: this.getBackendUrl(), path: '/actuator', status: 'offline', message: 'No verificado' },
+      { name: 'Health', url: this.getBackendUrl(), path: '/actuator/health', status: 'offline', message: 'No verificado' },
+      { name: 'Info', url: this.getBackendUrl(), path: '/actuator/info', status: 'offline', message: 'No verificado' },
+      { name: 'Mappings', url: this.getBackendUrl(), path: '/actuator/mappings', status: 'offline', message: 'No verificado' },
+      { name: 'API', url: this.getBackendUrl(), path: '/api', status: 'offline', message: 'No verificado' },
+      { name: 'Raíz Backend', url: this.getBackendUrl(), path: '', status: 'offline', message: 'No verificado' },
+      { name: 'Test 404', url: this.getBackendUrl(), path: '/endpoint-que-no-existe', status: 'offline', message: 'Test endpoint para probar errores' }
+    ];
+
+    // NO hacer verificaciones automáticas - solo manuales
+    console.log('EndpointsComponent inicializado - Verificación SOLO manual');
   }
 
   private checkBackendStatus() {
@@ -76,17 +81,22 @@ export class EndpointsComponent implements OnInit {
   }
 
   checkEndpoint(endpoint: EndpointStatus) {
-    console.log(`Verificando endpoint: ${endpoint.name} (${endpoint.url}${endpoint.path})`);
+    // Construir la URL final
+    const finalUrl = endpoint.url ? (endpoint.url + endpoint.path) : endpoint.path;
+    console.log(`🔍 Verificando endpoint: ${endpoint.name}`);
+    console.log(`   - URL: ${finalUrl}`);
+    console.log(`   - Tipo: ${endpoint.url ? 'Absoluta (sin proxy)' : 'Relativa (con proxy)'}`);
+
     endpoint.status = 'checking';
     endpoint.message = 'Verificando...';
     endpoint.lastChecked = new Date();
 
-    this.monitorService.checkSingleEndpoint(endpoint.url + endpoint.path).subscribe({
+    this.monitorService.checkSingleEndpoint(finalUrl).subscribe({
       next: (response: any) => {
         console.log(`📡 Respuesta para ${endpoint.name}:`, response);
 
         // Verificar si la respuesta indica un error
-        if (response.error === true || response.status >= 400) {
+        if (response.error === true || (response.status && response.status >= 400)) {
           endpoint.status = 'offline';
           endpoint.message = response.message || `Error HTTP ${response.status}`;
           console.log(`❌ ${endpoint.name}: OFFLINE - ${endpoint.message}`);
@@ -100,6 +110,8 @@ export class EndpointsComponent implements OnInit {
         endpoint.status = 'offline';
         endpoint.message = error.message || `Error ${error.status || 'de conexión'}`;
         console.log(`❌ ${endpoint.name}: ERROR - ${endpoint.message}`);
+        console.log(`   - Código de error: ${error.status}`);
+        console.log(`   - Mensaje: ${error.message}`);
         console.error('Error completo:', error);
       }
     });
@@ -120,20 +132,26 @@ export class EndpointsComponent implements OnInit {
 
     const name = this.customName.trim() || `Custom ${this.endpoints.filter(e => e.isCustom).length + 1}`;
 
+    const customUrl = this.customUrl.trim();
+
     // Verificar si ya existe un endpoint con la misma URL
-    const existingEndpoint = this.endpoints.find(e =>
-      e.url + e.path === this.customUrl.trim()
-    );
+    const existingEndpoint = this.endpoints.find(e => {
+      const existingUrl = e.url ? (e.url + e.path) : e.path;
+      return existingUrl === customUrl;
+    });
 
     if (existingEndpoint) {
       alert('Este endpoint ya existe en la lista');
       return;
     }
 
+    // Determinar si es URL absoluta o relativa
+    const isAbsoluteUrl = customUrl.startsWith('http://') || customUrl.startsWith('https://');
+
     const newEndpoint: EndpointStatus = {
       name: name,
-      url: this.customUrl.trim(),
-      path: '',
+      url: isAbsoluteUrl ? customUrl : '',
+      path: isAbsoluteUrl ? '' : customUrl,
       status: 'offline',
       message: this.translationService.translate('endpoints.notVerified'),
       isCustom: true

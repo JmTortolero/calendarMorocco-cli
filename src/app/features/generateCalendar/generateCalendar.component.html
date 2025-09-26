@@ -1,10 +1,28 @@
 <div class="upload-container">
   <div class="form-group">
-    <label for="configSelect">{{ 'calendar.configLabel' | translate }}</label>
-    <select id="configSelect" [(ngModel)]="selectedConfig" class="form-control">
-      <option value="">{{ 'calendar.selectConfig' | translate }}</option>
+    <div class="config-header">
+      <label for="configSelect">{{ 'calendar.configLabel' | translate }}</label>
+      <button
+        type="button"
+        (click)="refreshConfig()"
+        [disabled]="configLoading"
+        class="refresh-config-btn"
+        title="Actualizar opciones de configuración">
+        {{ configLoading ? '🔄' : '⟳' }}
+      </button>
+    </div>
+
+    <select
+      id="configSelect"
+      [(ngModel)]="selectedConfig"
+      class="form-control"
+      [disabled]="configLoading || configOptions.length === 0">
+      <option value="">
+        {{ configLoading ? 'Cargando opciones...' :
+           (configOptions.length === 0 ? 'No hay opciones disponibles' : ('calendar.selectConfig' | translate)) }}
+      </option>
       <option *ngFor="let config of configOptions" [value]="config.value">
-        {{ config.labelKey | translate }}
+        {{ config.labelKey | translate }}{{ config.description ? ' - ' + config.description : '' }}
       </option>
     </select>
   </div>
@@ -23,10 +41,20 @@
 
   <button
     (click)="generateCalendar()"
-    [disabled]="loading || !selectedConfig || !excelFile"
+    [disabled]="loading || configLoading || !selectedConfig || !excelFile || configOptions.length === 0"
     class="generate-button">
     {{ loading ? ('calendar.loading' | translate) : ('calendar.generateButton' | translate) }}
   </button>
+
+  <!-- Información adicional sobre el estado -->
+  <div class="generation-info">
+    <small *ngIf="configLoading" class="info-text">
+      🔄 Cargando opciones de configuración...
+    </small>
+    <small *ngIf="!configLoading && configOptions.length === 0" class="warning-text">
+      ⚠️ No se pueden generar calendarios sin opciones de configuración válidas
+    </small>
+  </div>
 
   <div *ngIf="error" class="error">{{ error }}</div>
   <div *ngIf="success" class="success">{{ success }}</div>

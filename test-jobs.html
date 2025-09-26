@@ -90,7 +90,7 @@
 <body>
     <div class="container">
         <h1>🔄 Test de Jobs API - Demo de 40 segundos</h1>
-        
+
         <div class="section">
             <h2>📊 Estado del Backend</h2>
             <button onclick="checkHealth()">🏥 Check Health</button>
@@ -161,11 +161,11 @@
             const element = document.getElementById(elementId);
             const timestamp = new Date().toLocaleTimeString();
             const logMessage = `[${timestamp}] ${message}\n`;
-            
+
             if (element.textContent.length > 5000) {
                 element.textContent = element.textContent.substring(2000);
             }
-            
+
             element.textContent += logMessage;
             element.className = `result ${isError ? 'error' : 'success'}`;
             element.scrollTop = element.scrollHeight;
@@ -173,7 +173,7 @@
 
         async function checkHealth() {
             try {
-                log('healthResult', '🔍 Verificando health del backend...');
+                log('healthResult', `🔍 Verificando health del backend... ${BASE_URL}`);
                 const response = await fetch(`${BASE_URL}/actuator/health`);
                 const data = await response.json();
                 log('healthResult', `✅ Backend Health: ${JSON.stringify(data, null, 2)}`);
@@ -186,26 +186,26 @@
             try {
                 const excel = document.getElementById('excelSelect').value;
                 const properties = document.getElementById('propertiesSelect').value;
-                
+
                 log('createResult', `🚀 Creando job asíncrono con excel=${excel}, properties=${properties}...`);
-                
+
                 const response = await fetch(`${BASE_URL}/api/jobs/generate-async?excel=${excel}&properties=${properties}`, {
                     method: 'POST'
                 });
-                
+
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
-                
+
                 const job = await response.json();
                 log('createResult', `✅ Job creado exitosamente:\n${JSON.stringify(job, null, 2)}`);
-                
+
                 // Auto-llenar el campo de Job ID para polling
                 document.getElementById('jobIdInput').value = job.id;
-                
+
                 // Iniciar polling automático del job recién creado
                 startJobPolling();
-                
+
             } catch (error) {
                 log('createResult', `❌ Error creando job: ${error.message}`, true);
             }
@@ -216,16 +216,16 @@
                 log('listResult', '📋 Obteniendo lista de jobs...');
                 const response = await fetch(`${BASE_URL}/api/jobs/list`);
                 const jobs = await response.json();
-                
+
                 let summary = `✅ Total de jobs: ${jobs.length}\n\n`;
-                
+
                 jobs.forEach((job, index) => {
-                    const duration = job.startedAt && job.completedAt 
+                    const duration = job.startedAt && job.completedAt
                         ? Math.round((new Date(job.completedAt) - new Date(job.startedAt)) / 1000) + 's'
-                        : job.startedAt 
+                        : job.startedAt
                         ? Math.round((new Date() - new Date(job.startedAt)) / 1000) + 's (en curso)'
                         : 'N/A';
-                        
+
                     summary += `[${index + 1}] ${getStatusIcon(job.status)} ID: ${job.id}\n`;
                     summary += `    Estado: ${job.status}\n`;
                     summary += `    Creado: ${new Date(job.createdAt).toLocaleString()}\n`;
@@ -236,7 +236,7 @@
                     }
                     summary += '\n';
                 });
-                
+
                 log('listResult', summary);
             } catch (error) {
                 log('listResult', `❌ Error obteniendo lista: ${error.message}`, true);
@@ -249,7 +249,7 @@
                 log('statusResult', '❌ Por favor ingrese un Job ID', true);
                 return;
             }
-            
+
             try {
                 log('statusResult', `🔍 Obteniendo estado del job ${jobId}...`);
                 const response = await fetch(`${BASE_URL}/api/jobs/status/${jobId}`);
@@ -266,13 +266,13 @@
                 log('cancelResult', '❌ Por favor ingrese un Job ID', true);
                 return;
             }
-            
+
             try {
                 log('cancelResult', `🛑 Cancelando job ${jobId}...`);
                 const response = await fetch(`${BASE_URL}/api/jobs/cancel/${jobId}`, {
                     method: 'DELETE'
                 });
-                
+
                 if (response.ok) {
                     log('cancelResult', `✅ Job ${jobId} cancelado exitosamente`);
                 } else {
@@ -287,7 +287,7 @@
             if (autoRefreshInterval) {
                 clearInterval(autoRefreshInterval);
             }
-            
+
             log('listResult', '🔄 Iniciando auto-refresh cada 3 segundos...');
             autoRefreshInterval = setInterval(listJobs, 3000);
             listJobs(); // Primera carga inmediata
@@ -307,11 +307,11 @@
                 log('statusResult', '❌ Por favor ingrese un Job ID', true);
                 return;
             }
-            
+
             if (jobPollingInterval) {
                 clearInterval(jobPollingInterval);
             }
-            
+
             log('statusResult', `🔄 Iniciando polling del job ${jobId} cada 2 segundos...`);
             jobPollingInterval = setInterval(() => getJobStatus(), 2000);
             getJobStatus(); // Primera carga inmediata

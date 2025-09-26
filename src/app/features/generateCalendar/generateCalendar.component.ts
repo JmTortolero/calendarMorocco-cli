@@ -1,20 +1,11 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
-import * as yaml from 'js-yaml';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
 import { TranslationService } from '../../core/services/translation.service';
-
-interface ConfigOption {
-  labelKey: string;
-  value: string;
-}
-
-interface ConfigData {
-  configOptions: ConfigOption[];
-}
+import { ConfigService, ConfigOption } from '../../core/services/config.service';
 
 @Component({
   selector: 'app-generate-calendar',
@@ -28,47 +19,81 @@ export class GenerateCalendarComponent implements OnInit {
   loading = false;
   error: string | null = null;
   success: string | null = null;
+  configLoading = false;
 
   // Angular 20 Best Practice: inject() function + readonly
   private readonly translationService = inject(TranslationService);
   private readonly http = inject(HttpClient);
+  private readonly configService = inject(ConfigService);
+  private readonly destroyRef = inject(DestroyRef);
 
   configOptions: ConfigOption[] = [];
-
   selectedConfig: string = '';
 
-  async ngOnInit() {
-    await this.loadConfigOptions();
+  ngOnInit() {
+    console.log('🚀 GenerateCalendarComponent: Initializing...');
+    this.subscribeToConfigService();
   }
 
-  async loadConfigOptions() {
+  /**
+   * Suscribe a los observables del ConfigService
+   */
+  private subscribeToConfigService() {
+    // Suscribirse a las opciones de configuración
+    this.configService.configOptions$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(options => {
+        console.log('📋 GenerateCalendar: Options updated:', options.length);
+        console.log('📋 GenerateCalendar: Options details:', options);
+        this.configOptions = options;
+        
+        // Log adicional para debugging
+        if (options.length > 0) {
+          console.log('✅ Config options loaded successfully:');
+          options.forEach((option, index) => {
+            console.log(`   ${index + 1}. ${option.labelKey} = "${option.value}"`);
+          });
+        } else {
+          console.log('⚠️ No config options available');
+        }
+      });
+
+    // Suscribirse al estado de carga
+    this.configService.loading$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(loading => {
+        this.configLoading = loading;
+      });
+
+    // Suscribirse a errores de configuración
+    this.configService.error$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(configError => {
+        if (configError) {
+          console.error('❌ GenerateCalendar: Configuration error:', configError);
+          this.error = configError;
+        }
+      });
+  }
+
+  /**
+   * Refresca las opciones de configuración manualmente
+   */
+  async refreshConfig() {
+    console.log('🔄 GenerateCalendar: Refreshing configuration...');
     try {
-      // Angular 20 Best Practice: Direct firstValueFrom usage
-      const response = await firstValueFrom(
-        this.http.get<ConfigData>('/api/config/options')
-      );
-      this.configOptions = response?.configOptions || [];
-    } catch (backendError) {
-      console.warn('Backend not available, trying local YAML fallback:', backendError);
+      await this.configService.refresh();
+      this.error = null; // Clear previous errors in this component
+      this.success = 'Configuration updated successfully';
 
-      try {
-        // Fallback a archivo YAML local
-        const response = await firstValueFrom(
-          this.http.get('/assets/config/config-options.yml', { responseType: 'text' })
-        );
-        const data = yaml.load(response as string) as ConfigData;
-        this.configOptions = data.configOptions;
-      } catch (yamlError) {
-        console.error('Error loading config options from YAML:', yamlError);
+      // Limpiar mensaje de éxito después de 3 segundos
+      setTimeout(() => {
+        this.success = null;
+      }, 3000);
 
-        // Fallback final a configuración hardcodeada
-        this.configOptions = [
-          { labelKey: 'config.botolaD1', value: 'schBotolaD1/SchMoroccoD1.properties' },
-          { labelKey: 'config.botolaD2', value: 'schBotolaD2/SchMoroccoD2.properties' },
-          { labelKey: 'config.cnpff1', value: 'schCNPFF1/MoroccoCNPFF1.properties' },
-          { labelKey: 'config.cnpff2', value: 'schCNPFF2/MoroccoCNPFF2.properties' }
-        ];
-      }
+    } catch (error) {
+      console.error('❌ GenerateCalendar: Error refrescando configuración:', error);
+      // El error se maneja automáticamente por la suscripción al configService.error$
     }
   }
 
@@ -80,10 +105,38 @@ export class GenerateCalendarComponent implements OnInit {
   }
 
   async generateCalendar() {
+    console.log("🚀 Starting calendar generation...");
+    console.log("📂 Excel file:", this.excelFile?.name || 'No file');
+    console.log("⚙️ Selected config:", this.selectedConfig || 'No config');
+    console.log("📋 Config options count:", this.configOptions.length);
+    
+    // Validaciones mejoradas
     if (!this.excelFile || !this.selectedConfig) {
       this.error = this.translationService.translate('calendar.errorFileConfig');
       this.success = null;
       return;
+    }
+    console.log("🔍 DEBUG - Selected option:", this.selectedConfig);
+    console.log("🔍 DEBUG - Available options:", this.configOptions);
+    console.log("🔍 DEBUG - ConfigService current options:", this.configService.getCurrentOptions());
+    console.log("🔍 DEBUG - ConfigService hasOption result:", this.configService.hasOption(this.selectedConfig));
+    
+    // Verificar que la configuración seleccionada existe (solo si hay opciones cargadas)
+    if (this.configOptions.length > 0 && !this.configService.hasOption(this.selectedConfig)) {
+      this.error = `Selected configuration '${this.selectedConfig}' is not valid or no longer available. Available options: ${this.configOptions.map(o => o.value).join(', ')}`;
+      this.success = null;
+      return;
+    } else if (this.configOptions.length === 0) {
+      console.log('⚠️ Skipping option validation - no options loaded from backend');
+      console.log('🔄 Proceeding with selected config:', this.selectedConfig);
+    }
+
+    // Verificar que hay opciones de configuración cargadas
+    if (this.configOptions.length === 0) {
+      console.log('⚠️ No config options available, but allowing generation to proceed');
+      console.log('💡 This might work if the backend accepts the selected config directly');
+      // Solo advertir pero no bloquear
+      console.warn('No configuration options loaded, proceeding anyway...');
     }
     this.loading = true;
     this.error = null;
@@ -93,7 +146,6 @@ export class GenerateCalendarComponent implements OnInit {
       formData.append('excel', this.excelFile);
       formData.append('configFile', this.selectedConfig);
 
-      // URL inteligente: funciona en desarrollo Y producción
       const apiUrl = this.getApiUrl('/api/calendar/generate');
       console.log('Generando calendario en:', apiUrl);
 
@@ -128,23 +180,15 @@ export class GenerateCalendarComponent implements OnInit {
     }
   }
 
-  // Método para determinar la URL correcta según el entorno
   private getApiUrl(path: string): string {
     const isProduction = window.location.hostname !== 'localhost';
-
     if (isProduction) {
-      // En producción: usar URL absoluta o relativa (mismo dominio)
-      return path; // URL relativa funciona si frontend y backend están en el mismo dominio
-
-      // O usar URL absoluta si están en dominios diferentes:
-      // return 'https://api.tudominio.com' + path;
+      return path;
     } else {
-      // En desarrollo: usar URL relativa (el proxy se encarga)
       return path;
     }
   }
 
-  // Angular 20 Best Practice: Getters for template access
   get currentTranslationService() {
     return this.translationService;
   }

@@ -61,67 +61,91 @@
 .backend-status {
   display: flex;
   align-items: center;
-  gap: 8px;
   direction: ltr !important;
 }
 
-.status-label {
-  font-weight: 500;
-  color: #FFE5B4;
-  font-size: 0.85em;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-.status-indicator {
-  padding: 6px 12px;
+.status-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: none;
   border-radius: 20px;
-  font-weight: 700;
-  font-size: 0.8em;
+  font-weight: 600;
+  font-size: 0.85em;
   text-align: center;
-  min-width: 70px;
+  cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.5px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  min-width: 140px;
 }
 
-.status-indicator.online {
+.status-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.status-button:active {
+  transform: translateY(0);
+}
+
+.status-button.online {
   background: #28a745;
   color: white;
   box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
-  animation: pulse-green 2s infinite;
 }
 
-.status-indicator.offline {
+.status-button.online:hover {
+  background: #218838;
+  box-shadow: 0 0 15px rgba(40, 167, 69, 0.5);
+}
+
+.status-button.offline {
   background: #dc3545;
   color: white;
   box-shadow: 0 0 10px rgba(220, 53, 69, 0.3);
-  animation: pulse-red 2s infinite;
 }
 
-@keyframes pulse-green {
-  0% {
-    box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 20px rgba(40, 167, 69, 0.6);
-  }
-  100% {
-    box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
-  }
+.status-button.offline:hover {
+  background: #c82333;
+  box-shadow: 0 0 15px rgba(220, 53, 69, 0.5);
 }
 
-@keyframes pulse-red {
-  0% {
-    box-shadow: 0 0 10px rgba(220, 53, 69, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 20px rgba(220, 53, 69, 0.6);
-  }
-  100% {
-    box-shadow: 0 0 10px rgba(220, 53, 69, 0.3);
-  }
+.status-button.unknown {
+  background: #6c757d;
+  color: white;
+  box-shadow: 0 0 10px rgba(108, 117, 125, 0.3);
 }
+
+.status-button.unknown:hover {
+  background: #5a6268;
+  box-shadow: 0 0 15px rgba(108, 117, 125, 0.5);
+}
+
+.status-button.checking {
+  background: #ffc107;
+  color: #212529;
+  cursor: wait;
+}
+
+.status-button:disabled {
+  cursor: wait;
+  opacity: 0.8;
+}
+
+.status-icon {
+  font-size: 1em;
+}
+
+.status-text {
+  white-space: nowrap;
+}
+
+/* Keyframes eliminadas - ya no se usa animación automática */
 
 /* RTL Support - POSICIÓN FIJA SIEMPRE */
 .backend-section {

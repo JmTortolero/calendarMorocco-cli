@@ -6,7 +6,10 @@
     "logs": "Logs",
     "backend": "Backend",
     "online": "ONLINE",
-    "offline": "OFFLINE"
+    "offline": "OFFLINE",
+    "checking": "CHECKING...",
+    "notChecked": "CLICK TO CHECK",
+    "clickToCheck": "Click to check backend status"
   },
   "calendar": {
     "title": "CALENDAR GENERATION",
@@ -27,7 +30,8 @@
     "botolaD1": "Botola D1",
     "botolaD2": "Botola D2",
     "cnpff1": "CNPFF1",
-    "cnpff2": "CNPFF2"
+    "cnpff2": "CNPFF2",
+    "errorBackendNotAvailable": "Backend not available: Cannot load configuration options. Please ensure the Spring Boot server is running on port 8080."
   },
   "endpoints": {
     "title": "Connectivity Status",
