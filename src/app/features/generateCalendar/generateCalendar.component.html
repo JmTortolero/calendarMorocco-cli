@@ -22,7 +22,7 @@
            (configOptions.length === 0 ? 'No hay opciones disponibles' : ('calendar.selectConfig' | translate)) }}
       </option>
       <option *ngFor="let config of configOptions" [value]="config.value">
-        {{ config.labelKey | translate }}{{ config.description ? ' - ' + config.description : '' }}
+  {{ config.labelKey | translate }}
       </option>
     </select>
   </div>

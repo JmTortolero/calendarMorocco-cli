@@ -7,13 +7,10 @@ import { getAppConfig } from '../config/app.config';
 export interface ConfigOption {
   labelKey: string;
   value: string;
-  description?: string;
 }
 
 export interface ConfigResponse {
   configOptions: ConfigOption[];
-  lastUpdated?: string;
-  version?: string;
 }
 
 @Injectable({
@@ -37,8 +34,7 @@ export class ConfigService {
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   constructor() {
-    // Automatically load when initializing the service
-    this.loadConfigOptions();
+     this.loadConfigOptions();
   }
 
   /**
@@ -57,25 +53,31 @@ export class ConfigService {
       const apiUrl = this.buildApiUrl('/options');
       console.log('🔄 ConfigService: Loading options from backend:', apiUrl);
 
-      const response = await firstValueFrom(
-        this.http.get<ConfigResponse>(apiUrl)
-      );
+     const response = await firstValueFrom(this.http.get<ConfigResponse>(apiUrl));
+     console.log('🔄 response:', response);
+     console.log('🔄 response:configOptions', response.configOptions);
+     if (response?.configOptions && Array.isArray(response.configOptions)) {
+       this._configOptions.next(response.configOptions);
+       this._lastLoadTime = Date.now();
 
-      if (response?.configOptions && Array.isArray(response.configOptions)) {
-        this._configOptions.next(response.configOptions);
-        this._lastLoadTime = Date.now();
+       console.log('✅ ConfigService: Options loaded successfully:', {
+         count: response.configOptions.length,
+       });
 
-        console.log('✅ ConfigService: Options loaded successfully:', {
-          count: response.configOptions.length,
-          version: response.version,
-          lastUpdated: response.lastUpdated
-        });
+       return response.configOptions;
+     } else if (Array.isArray(response)) {
+       // If backend returns a direct array, also accept it
+       this._configOptions.next(response);
+       this._lastLoadTime = Date.now();
 
-        return response.configOptions;
-      } else {
-        throw new Error('Invalid backend response: missing configOptions array');
-      }
+       console.log('✅ ConfigService: Options loaded successfully (array):', {
+         count: response.length,
+       });
 
+       return response;
+     } else {
+       throw new Error('Invalid backend response: missing configOptions array');
+     }
     } catch (backendError) {
       console.error('❌ ConfigService: Error loading from backend:', backendError);
       console.log('🚫 NO FALLBACKS - Backend direct only');

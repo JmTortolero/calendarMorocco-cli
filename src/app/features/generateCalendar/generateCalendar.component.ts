@@ -88,10 +88,10 @@ export class GenerateCalendarComponent implements OnInit {
       this.error = null; // Clear previous errors in this component
       this.success = 'Configuration updated successfully';
 
-      // Limpiar mensaje de éxito después de 3 segundos
+      // Limpiar mensaje de éxito después de 60 segundos
       setTimeout(() => {
         this.success = null;
-      }, 3000);
+      }, 60000);
 
     } catch (error) {
       console.error('❌ GenerateCalendar: Error refrescando configuración:', error);
@@ -186,15 +186,15 @@ export class GenerateCalendarComponent implements OnInit {
         }
       }
 
-      const apiUrl = this.getApiUrl('/api/calendar/generate');
+      const apiUrl =  '/api/calendar/generate';
       console.log('API URL:', apiUrl);
 
       // Verificar conectividad del backend antes de enviar archivos
       console.log('🔍 Verificando conectividad del backend...');
-      console.log('🌐 Health check URL:', this.getApiUrl('/actuator/health'));
+      console.log('🌐 Health check URL:', '/actuator/health');
 
       try {
-        const healthCheck = await firstValueFrom(this.http.get(this.getApiUrl('/actuator/health')));
+        const healthCheck = await firstValueFrom(this.http.get('/actuator/health'));
         console.log('✅ Backend conectado y funcionando:', healthCheck);
       } catch (healthError: any) {
         console.error('❌ Health check falló:', {
@@ -224,12 +224,10 @@ export class GenerateCalendarComponent implements OnInit {
       }
 
       try {
-        // Usar HttpClient de Angular para mejor manejo de archivos
         const response = await firstValueFrom(this.http.post(apiUrl, formData, {
           responseType: 'blob',
           observe: 'response',
           headers: {
-            // No agregar Content-Type, FormData lo maneja automáticamente
             'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/octet-stream,*/*'
           }
         }));
@@ -305,12 +303,6 @@ export class GenerateCalendarComponent implements OnInit {
       this.loading = false;
       console.log('=== FIN GENERACIÓN CALENDARIO ===');
     }
-  }
-
-  private getApiUrl(path: string): string {
-    // SIEMPRE usar rutas relativas para que funcione con el proxy de Angular
-    // El proxy.conf.json se encarga de redirigir a localhost:8080
-    return path;
   }
 
   /**
