@@ -16,7 +16,7 @@ export interface ConfigResponse {
 @Injectable({
   providedIn: 'root'
 })
-export class ConfigService {
+export class Config {
   private readonly http = inject(HttpClient);
 
   // Reactive state for configuration options
@@ -51,7 +51,7 @@ export class ConfigService {
 
     try {
       const apiUrl = this.buildApiUrl('/options');
-      console.log('🔄 ConfigService: Loading options from backend:', apiUrl);
+      console.log('🔄 Config: Loading options from backend:', apiUrl);
 
      const response = await firstValueFrom(this.http.get<ConfigResponse>(apiUrl));
      console.log('🔄 response:', response);
@@ -60,7 +60,7 @@ export class ConfigService {
        this._configOptions.next(response.configOptions);
        this._lastLoadTime = Date.now();
 
-       console.log('✅ ConfigService: Options loaded successfully:', {
+       console.log('✅ Config: Options loaded successfully:', {
          count: response.configOptions.length,
        });
 
@@ -70,7 +70,7 @@ export class ConfigService {
        this._configOptions.next(response);
        this._lastLoadTime = Date.now();
 
-       console.log('✅ ConfigService: Options loaded successfully (array):', {
+       console.log('✅ Config: Options loaded successfully (array):', {
          count: response.length,
        });
 
@@ -79,7 +79,7 @@ export class ConfigService {
        throw new Error('Invalid backend response: missing configOptions array');
      }
     } catch (backendError) {
-      console.error('❌ ConfigService: Error loading from backend:', backendError);
+      console.error('❌ Config: Error loading from backend:', backendError);
       console.log('🚫 NO FALLBACKS - Backend direct only');
 
       const errorMessage = this.getErrorMessage(backendError);
@@ -145,7 +145,7 @@ export class ConfigService {
     const configPath = appConfig.api.endpoints.config;
     const fullUrl = `${baseUrl}${configPath}${endpoint}`;
 
-    console.log('🔗 ConfigService URL Builder:', {
+    console.log('🔗 Config URL Builder:', {
       environment: environment.production ? 'production' : 'development',
       baseUrl,
       configPath,

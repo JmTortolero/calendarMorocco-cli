@@ -1,9 +1,6 @@
 {
   "nav": {
     "generateCalendar": "Generate Calendar",
-    "jobs": "Jobs",
-    "endpoints": "End Points",
-    "logs": "Logs",
     "backend": "Backend",
     "online": "ONLINE",
     "offline": "OFFLINE",
@@ -33,63 +30,11 @@
     "cnpff2": "CNPFF2",
     "errorBackendNotAvailable": "Backend not available: Cannot load configuration options. Please ensure the Spring Boot server is running on port 8080."
   },
-  "endpoints": {
-    "title": "Connectivity Status",
-    "subtitle": "Backend End Points",
-    "verifyAll": "Verify All",
-    "customTitle": "Custom Endpoint",
-    "customName": "Endpoint name (optional)",
-    "customUrl": "https://example.com/api/endpoint",
-    "addButton": "Add",
-    "verifying": "Verifying...",
-    "verify": "Verify",
-    "notVerified": "Not verified",
-    "lastCheck": "Last check:",
-    "remove": "Remove custom endpoint"
-  },
-  "logs": {
-    "title": "System Logs",
-    "updateButton": "Update Logs",
-    "clearButton": "Clear Logs",
-    "backendInfo": "Backend Information",
-    "noLogs": "No logs available. Press \"Update Logs\" to load.",
-    "infoTitle": "Information:",
-    "info1": "Logs are updated automatically every 10 seconds",
-    "info2": "Backend status is checked every 5 seconds",
-    "info3": "Use \"Update Logs\" for immediate manual update",
-    "info4": "If backend is offline, verify Spring Boot is running on port 8080"
-  },
-  "jobs": {
-    "title": "Asynchronous Jobs Monitor",
-    "subtitle": "Real-time monitoring of calendar generation jobs",
-    "createNew": "Create New Job",
-    "cancel": "Cancel",
-    "refresh": "Manual Refresh",
-    "createForm": "Create New Asynchronous Job",
-    "excelFile": "Excel File:",
-    "propertiesFile": "Properties File:",
-    "createJob": "Create Job",
-    "creating": "Creating...",
-    "loading": "Loading jobs...",
-    "autoRefresh": "Jobs List (Auto-refresh every 3s)",
-    "total": "Total",
-    "active": "Active",
-    "completed": "Completed",
-    "noJobs": "No jobs available",
-    "createFirst": "Create your first asynchronous job using the \"Create New Job\" button",
-    "demo": "Demo Information",
-    "demoInfo1": "Each job takes 40 seconds to complete (demo)",
-    "demoInfo2": "Jobs are automatically updated every 3 seconds",
-    "demoInfo3": "States: PENDING → RUNNING → COMPLETED/ERROR/CANCELLED",
-    "demoInfo4": "Files can be downloaded when job is COMPLETED",
-    "demoInfo5": "Jobs can be cancelled while PENDING or RUNNING"
-  },
   "error": {
     "cors": "CORS or server not responding",
     "notFound": "Endpoint not found (404)",
     "serverError": "Internal server error (500)",
     "connection": "Connection error",
-    "gettingLogs": "Error getting logs from server",
     "details": "Details:"
   }
 }

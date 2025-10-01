@@ -1,5 +1,5 @@
 import { Pipe, PipeTransform, inject } from '@angular/core';
-import { TranslationService } from '../services/translation.service';
+import { Translation } from '../services';
 
 @Pipe({
   name: 'translate',
@@ -7,7 +7,7 @@ import { TranslationService } from '../services/translation.service';
   pure: false // Para que se actualice cuando cambie el idioma
 })
 export class TranslatePipe implements PipeTransform {
-  private translationService = inject(TranslationService);
+  private translationService = inject(Translation);
 
   transform(key: string): string {
     return this.translationService.translate(key);

@@ -5,18 +5,17 @@ import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
-import { TranslationService } from '../../core/services/translation.service';
-import { ConfigService, ConfigOption } from '../../core/services/config.service';
-import { environment } from '../../../environments/environment';
+import { Translation, Config } from '../../core/services';
+import { ConfigOption } from '../../core/services/config';
 
 @Component({
   selector: 'app-generate-calendar',
   standalone: true,
   imports: [CommonModule, FormsModule, TranslatePipe],
-  templateUrl: './generateCalendar.component.html',
-  styleUrl: './generateCalendar.component.css'
+  templateUrl: './generateCalendar.html',
+  styleUrl: './generateCalendar.css'
 })
-export class GenerateCalendarComponent implements OnInit {
+export class GenerateCalendar implements OnInit {
   excelFile: File | null = null;
   loading = false;
   error: string | null = null;
@@ -24,16 +23,16 @@ export class GenerateCalendarComponent implements OnInit {
   configLoading = false;
 
   // Angular 20 Best Practice: inject() function + readonly
-  private readonly translationService = inject(TranslationService);
+  private readonly translationService = inject(Translation);
   private readonly http = inject(HttpClient);
-  private readonly configService = inject(ConfigService);
+  private readonly configService = inject(Config);
   private readonly destroyRef = inject(DestroyRef);
 
   configOptions: ConfigOption[] = [];
   selectedConfig: string = '';
 
   ngOnInit() {
-    console.log('🚀 GenerateCalendarComponent: Initializing...');
+    console.log('🚀 GenerateCalendar: Initializing...');
     this.subscribeToConfigService();
   }
 
