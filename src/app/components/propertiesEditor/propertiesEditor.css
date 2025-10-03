@@ -1,0 +1,23 @@
+.properties-editor-container {
+  font-family: var(--font-family, Arial, sans-serif);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  text-align: center;
+}
+
+h2 {
+  color: var(--primary-color, #005a9e);
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
+
+.coming-soon {
+  padding: 50px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  margin-top: 30px;
+  font-size: 1.2rem;
+  color: #6c757d;
+}

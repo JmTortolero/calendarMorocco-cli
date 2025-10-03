@@ -17,11 +17,34 @@
     "selectConfig": "اختر المنافسة",
     "noFileSelected": "لم يتم اختيار ملف",
     "generateButton": "إنشاء الجدول",
+    "generate": "إنشاء الجدول",
+    "generating": "جاري الإنشاء...",
     "loading": "جاري إنشاء الجدول...",
     "success": "تم إنشاء الجدول وتنزيله بنجاح!",
     "errorFileConfig": "يرجى اختيار ملف إكسل والمنافسة.",
     "errorGenerate": "خطأ في إنشاء الجدول",
     "errorUnknown": "خطأ غير معروف"
+  },
+  "propertiesManager": {
+    "title": "مدير ملفات الخصائص",
+    "propertiesTitle": "ملفات الخصائص",
+    "refresh": "تحديث",
+    "manageFiles": "إدارة الملفات",
+    "loading": "جاري تحميل ملفات الخصائص...",
+    "selectProperty": "اختر ملف خصائص:",
+    "selectOption": "-- اختر ملفًا --",
+    "fileContent": "محتوى الملف:",
+    "loadingContent": "جاري تحميل محتوى الملف...",
+    "noContent": "لا يوجد محتوى متاح",
+    "download": "تنزيل ملف الخصائص",
+    "downloading": "جاري التنزيل...",
+    "downloadSuccess": "تم تنزيل ملف الخصائص بنجاح!",
+    "errorNoPropertySelected": "يرجى اختيار ملف خصائص.",
+    "errorDownload": "خطأ في تنزيل ملف الخصائص"
+  },
+  "propertiesEditor": {
+    "title": "محرر ملفات الخصائص",
+    "comingSoon": "وظيفة تحرير ملفات الخصائص المتقدمة قادمة قريبًا. ستتيح لك هذه الميزة إنشاء وتحرير وحذف ملفات الخصائص مباشرة من المتصفح."
   },
   "config": {
     "botolaD1": "البطولة الأولى",
@@ -30,7 +53,7 @@
     "cnpff2": "الاتحاد الثاني",
     "errorBackendNotAvailable": "الخادم غير متاح: لا يمكن تحميل خيارات التكوين. يرجى التأكد من تشغيل خادم Spring Boot على المنفذ 8080."
   },
-    "error": {
+  "error": {
     "cors": "CORS أو الخادم لا يستجيب",
     "notFound": "النقطة غير موجودة (404)",
     "serverError": "خطأ داخلي في الخادم (500)",

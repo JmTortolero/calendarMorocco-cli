@@ -17,11 +17,34 @@
     "selectConfig": "Select competition",
     "noFileSelected": "No file selected",
     "generateButton": "Generate Calendar",
+    "generate": "Generate Calendar",
+    "generating": "Generating...",
     "loading": "Generating calendar...",
     "success": "Calendar generated and downloaded successfully!",
     "errorFileConfig": "Please select Excel file and competition.",
     "errorGenerate": "Error generating calendar",
     "errorUnknown": "Unknown error"
+  },
+  "propertiesManager": {
+    "title": "Properties Manager",
+    "propertiesTitle": "Properties Files",
+    "refresh": "Refresh",
+    "manageFiles": "Manage Files",
+    "loading": "Loading properties files...",
+    "selectProperty": "Select property file:",
+    "selectOption": "-- Select a file --",
+    "fileContent": "File Content:",
+    "loadingContent": "Loading file content...",
+    "noContent": "No content available",
+    "download": "Download Properties File",
+    "downloading": "Downloading...",
+    "downloadSuccess": "Properties file downloaded successfully!",
+    "errorNoPropertySelected": "Please select a property file.",
+    "errorDownload": "Error downloading property file"
+  },
+  "propertiesEditor": {
+    "title": "Properties Editor",
+    "comingSoon": "Advanced property file editing functionality is coming soon. This feature will allow you to create, edit and delete property files directly from the browser."
   },
   "config": {
     "botolaD1": "Botola D1",
