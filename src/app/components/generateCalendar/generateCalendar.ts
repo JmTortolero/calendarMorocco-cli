@@ -1,5 +1,4 @@
-import { Component, inject, OnInit, DestroyRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, OnInit, DestroyRef, signal, computed, effect } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -11,25 +10,41 @@ import { ConfigOption } from '../../core/services/config';
 @Component({
   selector: 'app-generate-calendar',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslatePipe],
+  imports: [FormsModule, TranslatePipe], // ✅ Angular 21: Kept TranslatePipe as it's used
   templateUrl: './generateCalendar.html',
   styleUrl: './generateCalendar.css'
 })
 export class GenerateCalendar implements OnInit {
-  excelFile: File | null = null;
-  loading = false;
-  error: string | null = null;
-  success: string | null = null;
-  configLoading = false;
+  // 🔥 Angular 21: Signals for reactive state management
+  excelFile = signal<File | null>(null);
+  loading = signal(false);
+  error = signal<string | null>(null);
+  success = signal<string | null>(null);
+  configLoading = signal(false);
+  configOptions = signal<ConfigOption[]>([]);
+  selectedConfig = signal('');
 
-  // Angular 20 Best Practice: inject() function + readonly
+  // 🔥 Angular 21: Computed signals for derived state
+  hasExcelFile = computed(() => this.excelFile() !== null);
+  canGenerate = computed(() => !this.loading() && this.hasExcelFile() && this.selectedConfig().length > 0 && this.configOptions().length > 0);
+  hasConfigOptions = computed(() => this.configOptions().length > 0);
+  isFormReady = computed(() => !this.configLoading() && this.hasConfigOptions());
+
+  // 🔥 Angular 21: Effect for logging state changes
+  private stateLogger = effect(() => {
+    console.log('📊 GenerateCalendar State:', {
+      hasFile: this.hasExcelFile(),
+      canGenerate: this.canGenerate(),
+      loading: this.loading(),
+      configCount: this.configOptions().length
+    });
+  });
+
+  // Angular 21: inject() function for dependency injection
   private readonly translationService = inject(Translation);
   private readonly http = inject(HttpClient);
   private readonly configService = inject(Config);
   private readonly destroyRef = inject(DestroyRef);
-
-  configOptions: ConfigOption[] = [];
-  selectedConfig: string = '';
 
   ngOnInit() {
     console.log('🚀 GenerateCalendar: Initializing...');
@@ -46,7 +61,7 @@ export class GenerateCalendar implements OnInit {
       .subscribe(options => {
         console.log('📋 GenerateCalendar: Options updated:', options.length);
         console.log('📋 GenerateCalendar: Options details:', options);
-        this.configOptions = options;
+        this.configOptions.set(options);
 
         // Log adicional para debugging
         if (options.length > 0) {
@@ -63,7 +78,7 @@ export class GenerateCalendar implements OnInit {
     this.configService.loading$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(loading => {
-        this.configLoading = loading;
+        this.configLoading.set(loading);
       });
 
     // Suscribirse a errores de configuración
@@ -72,7 +87,7 @@ export class GenerateCalendar implements OnInit {
       .subscribe(configError => {
         if (configError) {
           console.error('❌ GenerateCalendar: Configuration error:', configError);
-          this.error = configError;
+          this.error.set(configError);
         }
       });
   }
@@ -84,12 +99,12 @@ export class GenerateCalendar implements OnInit {
     console.log('🔄 GenerateCalendar: Refreshing configuration...');
     try {
       await this.configService.refresh();
-      this.error = null; // Clear previous errors in this component
-      this.success = 'Configuration updated successfully';
+      this.error.set(null);
+      this.success.set('Configuration updated successfully');
 
       // Limpiar mensaje de éxito después de 60 segundos
       setTimeout(() => {
-        this.success = null;
+        this.success.set(null);
       }, 60000);
 
     } catch (error) {
@@ -101,7 +116,8 @@ export class GenerateCalendar implements OnInit {
   onFileChange(event: Event, type: 'excel') {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      this.excelFile = input.files[0];
+      this.excelFile.set(input.files[0]);
+      console.log('📄 Excel file selected:', input.files[0].name);
     }
   }
 
@@ -112,68 +128,63 @@ export class GenerateCalendar implements OnInit {
     console.log("📋 Config options count:", this.configOptions.length);
 
     // Validaciones mejoradas
-    if (!this.excelFile || !this.selectedConfig) {
-      this.error = this.translationService.translate('calendar.errorFileConfig');
-      this.success = null;
+    if (!this.excelFile() || !this.selectedConfig()) {
+      this.error.set(this.translationService.translate('calendar.errorFileConfig'));
+      this.success.set(null);
       return;
     }
-    console.log("🔍 DEBUG - Selected option:", this.selectedConfig);
-    console.log("🔍 DEBUG - Available options:", this.configOptions);
+    console.log("🔍 DEBUG - Selected option:", this.selectedConfig());
+    console.log("🔍 DEBUG - Available options:", this.configOptions());
     console.log("🔍 DEBUG - ConfigService current options:", this.configService.getCurrentOptions());
-    console.log("🔍 DEBUG - ConfigService hasOption result:", this.configService.hasOption(this.selectedConfig));
+    console.log("🔍 DEBUG - ConfigService hasOption result:", this.configService.hasOption(this.selectedConfig()));
 
     // Verificar que la configuración seleccionada existe (solo si hay opciones cargadas)
-    if (this.configOptions.length > 0 && !this.configService.hasOption(this.selectedConfig)) {
-      this.error = `Selected configuration '${this.selectedConfig}' is not valid or no longer available. Available options: ${this.configOptions.map(o => o.value).join(', ')}`;
-      this.success = null;
+    if (this.configOptions().length > 0 && !this.configService.hasOption(this.selectedConfig())) { // 🔥 Angular 21: Using signal()
+      this.error.set(`Selected configuration '${this.selectedConfig()}' is not valid or no longer available. Available options: ${this.configOptions().map(o => o.value).join(', ')}`); // 🔥 Angular 21: Using signal.set()
+      this.success.set(null);
       return;
-    } else if (this.configOptions.length === 0) {
+    } else if (this.configOptions().length === 0) { // 🔥 Angular 21: Using signal()
       console.log('⚠️ Skipping option validation - no options loaded from backend');
-      console.log('🔄 Proceeding with selected config:', this.selectedConfig);
+      console.log('🔄 Proceeding with selected config:', this.selectedConfig());
     }
 
     // Verificar que hay opciones de configuración cargadas
-    if (this.configOptions.length === 0) {
+    if (this.configOptions().length === 0) { // 🔥 Angular 21: Using signal()
       console.log('⚠️ No config options available, but allowing generation to proceed');
       console.log('💡 This might work if the backend accepts the selected config directly');
       // Solo advertir pero no bloquear
       console.warn('No configuration options loaded, proceeding anyway...');
     }
-    this.loading = true;
-    this.error = null;
-    this.success = null;
+    this.loading.set(true); // 🔥 Angular 21: Using signal.set()
+    this.error.set(null);
+    this.success.set(null);
     try {
       // Validaciones detalladas
       console.log('=== INICIO GENERACIÓN CALENDARIO ===');
-      console.log('Excel file:', this.excelFile);
-      console.log('Excel file name:', this.excelFile?.name);
-      console.log('Excel file size:', this.excelFile?.size);
-      console.log('Excel file type:', this.excelFile?.type);
-      console.log('Selected config:', this.selectedConfig);
-      console.log('Selected config type:', typeof this.selectedConfig);
+      console.log('Excel file:', this.excelFile());
+      console.log('Excel file name:', this.excelFile()?.name);
+      console.log('Excel file size:', this.excelFile()?.size);
+      console.log('Excel file type:', this.excelFile()?.type);
+      console.log('Selected config:', this.selectedConfig());
+      console.log('Selected config type:', typeof this.selectedConfig());
 
       // Preparar nombre del archivo de propiedades
-      const finalPropertiesName = this.selectedConfig.endsWith('.properties')
-        ? this.selectedConfig
-        : `${this.selectedConfig}.properties`;
+      const finalPropertiesName = this.selectedConfig().endsWith('.properties')
+        ? this.selectedConfig()
+        : `${this.selectedConfig()}.properties`;
       console.log('Properties name to send:', finalPropertiesName);
 
-      if (!this.excelFile) {
+      if (!this.excelFile()) {
         throw new Error('No Excel file selected');
       }
-      if (!this.selectedConfig) {
+      if (!this.selectedConfig()) {
         throw new Error('No configuration file selected');
       }
-
       const formData = new FormData();
-      formData.append('excel', this.excelFile);
+      formData.append('excel', this.excelFile()!);
 
       // El backend espera el nombre del archivo de propiedades como string
-      // Agregar extensión .properties si no la tiene
-      const propertiesName = this.selectedConfig.endsWith('.properties')
-        ? this.selectedConfig
-        : `${this.selectedConfig}.properties`;
-      formData.append('properties', propertiesName);
+      formData.append('properties', finalPropertiesName);
 
       console.log('FormData created successfully');
       console.log('FormData entries:');
@@ -288,7 +299,7 @@ export class GenerateCalendar implements OnInit {
           throw new Error(`❌ Error HTTP ${httpError.status}: ${httpError.statusText || httpError.message}`);
         }
       }
-      this.success = this.translationService.translate('calendar.success');
+      this.success.set(this.translationService.translate('calendar.success'));
       console.log('=== CALENDARIO GENERADO EXITOSAMENTE ===');
     } catch (e: any) {
       console.error('=== ERROR EN GENERACIÓN DE CALENDARIO ===');
@@ -296,10 +307,10 @@ export class GenerateCalendar implements OnInit {
       console.error('Error message:', e.message);
       console.error('Error stack:', e.stack);
 
-      this.error = e.message || this.translationService.translate('calendar.errorUnknown');
-      this.success = null;
+      this.error.set(e.message || this.translationService.translate('calendar.errorUnknown'));
+      this.success.set(null);
     } finally {
-      this.loading = false;
+      this.loading.set(false);
       console.log('=== FIN GENERACIÓN CALENDARIO ===');
     }
   }

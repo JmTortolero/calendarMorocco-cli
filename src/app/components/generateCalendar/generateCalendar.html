@@ -5,10 +5,14 @@
       <button
         type="button"
         (click)="refreshConfig()"
-        [disabled]="configLoading"
+        [disabled]="configLoading()"
         class="refresh-config-btn"
         title="Actualizar opciones de configuración">
-        {{ configLoading ? '🔄' : '⟳' }}
+        @if (configLoading()) {
+          🔄
+        } @else {
+          ⟳
+        }
       </button>
     </div>
 
@@ -16,14 +20,21 @@
       id="configSelect"
       [(ngModel)]="selectedConfig"
       class="form-control"
-      [disabled]="configLoading || configOptions.length === 0">
+      [disabled]="configLoading() || configOptions().length === 0">
       <option value="">
-        {{ configLoading ? 'Cargando opciones...' :
-           (configOptions.length === 0 ? 'No hay opciones disponibles' : ('calendar.selectConfig' | translate)) }}
+        @if (configLoading()) {
+          Cargando opciones...
+        } @else if (configOptions().length === 0) {
+          No hay opciones disponibles
+        } @else {
+          {{ 'calendar.selectConfig' | translate }}
+        }
       </option>
-      <option *ngFor="let config of configOptions" [value]="config.value">
-  {{ config.labelKey | translate }}
-      </option>
+      @for (config of configOptions(); track config.value) {
+        <option [value]="config.value">
+          {{ config.labelKey | translate }}
+        </option>
+      }
     </select>
   </div>
 
@@ -35,27 +46,43 @@
       accept=".xlsx,.xls"
       (change)="onFileChange($event, 'excel')"
       class="form-control">
-    <small *ngIf="!excelFile" class="help-text">{{ 'calendar.noFileSelected' | translate }}</small>
-    <small *ngIf="excelFile" class="file-selected">✓ {{ excelFile.name }}</small>
+    @if (!excelFile()) {
+      <small class="help-text">{{ 'calendar.noFileSelected' | translate }}</small>
+    }
+    @if (excelFile()) {
+      <small class="file-selected">✓ {{ excelFile()?.name }}</small>
+    }
   </div>
 
   <button
     (click)="generateCalendar()"
-    [disabled]="loading || configLoading || !selectedConfig || !excelFile || configOptions.length === 0"
+    [disabled]="loading() || configLoading() || !selectedConfig() || !excelFile() || configOptions().length === 0"
     class="generate-button">
-    {{ loading ? ('calendar.loading' | translate) : ('calendar.generateButton' | translate) }}
+    @if (loading()) {
+      {{ 'calendar.loading' | translate }}
+    } @else {
+      {{ 'calendar.generateButton' | translate }}
+    }
   </button>
 
   <!-- Información adicional sobre el estado -->
   <div class="generation-info">
-    <small *ngIf="configLoading" class="info-text">
-      🔄 Cargando opciones de configuración...
-    </small>
-    <small *ngIf="!configLoading && configOptions.length === 0" class="warning-text">
-      ⚠️ No se pueden generar calendarios sin opciones de configuración válidas
-    </small>
+    @if (configLoading()) {
+      <small class="info-text">
+        🔄 Cargando opciones de configuración...
+      </small>
+    }
+    @if (!configLoading() && configOptions().length === 0) {
+      <small class="warning-text">
+        ⚠️ No se pueden generar calendarios sin opciones de configuración válidas
+      </small>
+    }
   </div>
 
-  <div *ngIf="error" class="error">{{ error }}</div>
-  <div *ngIf="success" class="success">{{ success }}</div>
+  @if (error()) {
+    <div class="error">{{ error() }}</div>
+  }
+  @if (success()) {
+    <div class="success">{{ success() }}</div>
+  }
 </div>

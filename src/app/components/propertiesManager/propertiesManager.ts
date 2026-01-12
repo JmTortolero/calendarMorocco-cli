@@ -1,40 +1,40 @@
-import { Component, inject, OnInit, DestroyRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, OnInit, DestroyRef, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
-import { TranslatePipe } from '../../core/pipes/translate.pipe';
 import { Translation, Config } from '../../core/services';
-import { ConfigOption } from '../../core/services/config';
 import { Router } from '@angular/router';
 
 interface PropertyFile {
   name: string;
   displayName: string;
-  content?: string; // Contenido del archivo si está cargado
+  content?: string;
 }
 
 @Component({
   selector: 'app-properties-manager',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslatePipe],
+  imports: [FormsModule],
   templateUrl: './propertiesManager.html',
   styleUrl: './propertiesManager.css'
 })
 export class PropertiesManager implements OnInit {
-  loading = false;
-  error: string | null = null;
-  success: string | null = null;
-  configLoading = false;
+  // 🔥 Angular 21: Signals for reactive state management
+  loading = signal(false);
+  error = signal<string | null>(null);
+  success = signal<string | null>(null);
+  configLoading = signal(false);
+  propertyFiles = signal<PropertyFile[]>([]);
+  selectedPropertyFile = signal('');
+  selectedPropertyContent = signal('');
+  isLoadingPropertyContent = signal(false);
 
-  // Propiedades para la gestión de archivos properties
-  propertyFiles: PropertyFile[] = [];
-  selectedPropertyFile: string = '';
-  selectedPropertyContent: string = '';
-  isLoadingPropertyContent = false;
+  // 🔥 Angular 21: Computed signals for derived state
+  hasSelectedFile = computed(() => this.selectedPropertyFile().length > 0);
+  canDownload = computed(() => !this.loading() && this.hasSelectedFile());
 
-  // Angular 20 Best Practice: inject() function + readonly
+  // 🔥 Angular 21: inject() function for dependency injection
   private readonly translationService = inject(Translation);
   private readonly http = inject(HttpClient);
   private readonly configService = inject(Config);
@@ -50,24 +50,25 @@ export class PropertiesManager implements OnInit {
    * Carga la lista de archivos properties disponibles
    */
   private loadPropertyFilesList() {
-    this.configLoading = true;
-    this.error = null;
+    this.configLoading.set(true);
+    this.error.set(null);
 
     // Suscribirse a las opciones de configuración
     this.configService.configOptions$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(options => {
-        this.configLoading = false;
+        this.configLoading.set(false);
         console.log('📋 PropertiesManager: Options updated:', options.length);
 
         // Convertir las opciones de configuración en archivos properties
-        this.propertyFiles = options.map(option => ({
+        const files = options.map(option => ({
           name: option.value,
           displayName: this.translationService.translate(option.labelKey) || option.labelKey
         }));
+        this.propertyFiles.set(files);
 
-        if (this.propertyFiles.length > 0) {
-          console.log('✅ Property files loaded successfully:', this.propertyFiles.length);
+        if (this.propertyFiles().length > 0) {
+          console.log('✅ Property files loaded successfully:', this.propertyFiles().length);
         } else {
           console.log('⚠️ No property files available');
         }
@@ -77,18 +78,18 @@ export class PropertiesManager implements OnInit {
     this.configService.error$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(configError => {
-        this.configLoading = false;
+        this.configLoading.set(false);
         if (configError) {
           console.error('❌ PropertiesManager: Configuration error:', configError);
-          this.error = configError;
+          this.error.set(configError);
         }
       });
 
     // Iniciar la carga
     this.configService.refresh().catch(error => {
       console.error('❌ Error cargando archivos properties:', error);
-      this.configLoading = false;
-      this.error = 'Error loading property files';
+      this.configLoading.set(false);
+      this.error.set('Error loading property files');
     });
   }
 
@@ -96,22 +97,22 @@ export class PropertiesManager implements OnInit {
    * Maneja el cambio de selección de archivo properties
    */
   onPropertyFileSelected() {
-    if (!this.selectedPropertyFile) {
-      this.selectedPropertyContent = '';
+    if (!this.selectedPropertyFile()) {
+      this.selectedPropertyContent.set('');
       return;
     }
 
-    console.log('📂 Property file selected:', this.selectedPropertyFile);
-    this.loadPropertyFileContent(this.selectedPropertyFile);
+    console.log('📂 Property file selected:', this.selectedPropertyFile());
+    this.loadPropertyFileContent(this.selectedPropertyFile());
   }
 
   /**
    * Carga el contenido de un archivo properties
    */
   private loadPropertyFileContent(propertyFileName: string) {
-    this.isLoadingPropertyContent = true;
-    this.selectedPropertyContent = '';
-    this.error = null;
+    this.isLoadingPropertyContent.set(true);
+    this.selectedPropertyContent.set('');
+    this.error.set(null);
 
     console.log('🔍 Loading property file content for:', propertyFileName);
 
@@ -122,20 +123,22 @@ export class PropertiesManager implements OnInit {
       .subscribe({
         next: (content: string) => {
           console.log('📄 Property file content loaded:', content.length, 'characters');
-          this.selectedPropertyContent = content;
-          this.isLoadingPropertyContent = false;
+          this.selectedPropertyContent.set(content);
+          this.isLoadingPropertyContent.set(false);
 
           // Actualizar el objeto propertyFiles con el contenido
-          const fileIndex = this.propertyFiles.findIndex(file => file.name === propertyFileName);
+          const fileIndex = this.propertyFiles().findIndex(file => file.name === propertyFileName);
           if (fileIndex >= 0) {
-            this.propertyFiles[fileIndex].content = content;
+            const updatedFiles = [...this.propertyFiles()];
+            updatedFiles[fileIndex].content = content;
+            this.propertyFiles.set(updatedFiles);
           }
         },
         error: (error) => {
           console.error('❌ Error loading property file content:', error);
-          this.error = `Error loading property file content: ${error.message || 'Unknown error'}`;
-          this.isLoadingPropertyContent = false;
-          this.selectedPropertyContent = '';
+          this.error.set(`Error loading property file content: ${error.message || 'Unknown error'}`);
+          this.isLoadingPropertyContent.set(false);
+          this.selectedPropertyContent.set('');
         }
       });
   }
@@ -159,24 +162,24 @@ export class PropertiesManager implements OnInit {
    * Descarga el archivo properties seleccionado
    */
   async downloadSelectedProperty() {
-    if (!this.selectedPropertyFile) {
-      this.error = this.translationService.translate('propertiesManager.errorNoPropertySelected');
-      this.success = null;
+    if (!this.selectedPropertyFile()) {
+      this.error.set(this.translationService.translate('propertiesManager.errorNoPropertySelected'));
+      this.success.set(null);
       return;
     }
 
-    this.loading = true;
-    this.error = null;
-    this.success = null;
+    this.loading.set(true);
+    this.error.set(null);
+    this.success.set(null);
 
     try {
       console.log('=== INICIO DESCARGA ARCHIVO PROPERTIES ===');
-      console.log('Selected property file:', this.selectedPropertyFile);
+      console.log('Selected property file:', this.selectedPropertyFile());
 
       // Agregar extensión .properties si no la tiene
-      const propertiesName = this.selectedPropertyFile.endsWith('.properties')
-        ? this.selectedPropertyFile
-        : `${this.selectedPropertyFile}.properties`;
+      const propertiesName = this.selectedPropertyFile().endsWith('.properties')
+        ? this.selectedPropertyFile()
+        : `${this.selectedPropertyFile()}.properties`;
 
       // Construir URL para descargar el archivo
       const url = `/api/config/download?name=${encodeURIComponent(propertiesName)}`;
@@ -214,12 +217,13 @@ export class PropertiesManager implements OnInit {
       // Descargar archivo
       this.downloadFile(blob, filename);
 
-      this.success = this.translationService.translate('propertiesManager.downloadSuccess');
-      console.log('=== ARCHIVO PROPERTIES DESCARGADO EXITOSAMENTE ===');    } catch (e: any) {
+      this.success.set(this.translationService.translate('propertiesManager.downloadSuccess'));
+      console.log('=== ARCHIVO PROPERTIES DESCARGADO EXITOSAMENTE ===');
+    } catch (e: any) {
       console.error('=== ERROR EN DESCARGA DE ARCHIVO PROPERTIES ===', e);
-      this.error = e.message || this.translationService.translate('propertiesManager.errorDownload');
+      this.error.set(e.message || this.translationService.translate('propertiesManager.errorDownload'));
     } finally {
-      this.loading = false;
+      this.loading.set(false);
     }
   }
 

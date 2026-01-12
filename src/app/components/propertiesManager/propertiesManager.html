@@ -7,64 +7,86 @@
       <button
         class="refresh-button"
         (click)="refreshProperties()"
-        [disabled]="configLoading || loading">
+        [disabled]="configLoading() || loading()">
         {{ currentTranslationService.translate('propertiesManager.refresh') || 'Refresh' }}
       </button>
       <button
         class="edit-button"
         (click)="goToPropertiesEditor()"
-        [disabled]="loading">
+        [disabled]="loading()">
         {{ currentTranslationService.translate('propertiesManager.manageFiles') || 'Manage Files' }}
       </button>
     </div>
 
-    <div *ngIf="configLoading" class="loading-indicator">
-      {{ currentTranslationService.translate('propertiesManager.loading') || 'Loading properties files...' }}
-    </div>
-
-    <div class="property-selector-content" *ngIf="!configLoading">
-      <div class="select-container">
-        <label for="propertyFile">{{ currentTranslationService.translate('propertiesManager.selectProperty') || 'Select property file:' }}</label>
-        <select
-          id="propertyFile"
-          [(ngModel)]="selectedPropertyFile"
-          (change)="onPropertyFileSelected()"
-          [disabled]="loading || propertyFiles.length === 0">
-          <option value="">{{ currentTranslationService.translate('propertiesManager.selectOption') || '-- Select a file --' }}</option>
-          <option *ngFor="let file of propertyFiles" [value]="file.name">
-            {{ file.displayName }}
-          </option>
-        </select>
+    @if (configLoading()) {
+      <div class="loading-indicator">
+        {{ currentTranslationService.translate('propertiesManager.loading') || 'Loading properties files...' }}
       </div>
-    </div>
+    }
+
+    @if (!configLoading()) {
+      <div class="property-selector-content">
+        <div class="select-container">
+          <label for="propertyFile">{{ currentTranslationService.translate('propertiesManager.selectProperty') || 'Select property file:' }}</label>
+          <select
+            id="propertyFile"
+            [(ngModel)]="selectedPropertyFile"
+            (change)="onPropertyFileSelected()"
+            [disabled]="loading() || propertyFiles().length === 0">
+            <option value="">{{ currentTranslationService.translate('propertiesManager.selectOption') || '-- Select a file --' }}</option>
+            @for (file of propertyFiles(); track file.name) {
+              <option [value]="file.name">
+                {{ file.displayName }}
+              </option>
+            }
+          </select>
+        </div>
+      </div>
+    }
   </div>
 
-  <div class="section property-content" *ngIf="selectedPropertyFile">
-    <h3>{{ currentTranslationService.translate('propertiesManager.fileContent') || 'File Content:' }} {{ selectedPropertyFile }}</h3>
+  @if (selectedPropertyFile()) {
+    <div class="section property-content">
+      <h3>{{ currentTranslationService.translate('propertiesManager.fileContent') || 'File Content:' }} {{ selectedPropertyFile() }}</h3>
 
-    <div *ngIf="isLoadingPropertyContent" class="loading-indicator">
-      {{ currentTranslationService.translate('propertiesManager.loadingContent') || 'Loading file content...' }}
+      @if (isLoadingPropertyContent()) {
+        <div class="loading-indicator">
+          {{ currentTranslationService.translate('propertiesManager.loadingContent') || 'Loading file content...' }}
+        </div>
+      }
+
+      @if (!isLoadingPropertyContent() && selectedPropertyContent()) {
+        <pre class="content-preview">{{ selectedPropertyContent() }}</pre>
+      }
+
+      @if (!isLoadingPropertyContent() && !selectedPropertyContent()) {
+        <div class="empty-content">
+          {{ currentTranslationService.translate('propertiesManager.noContent') || 'No content available' }}
+        </div>
+      }
     </div>
-
-    <pre class="content-preview" *ngIf="!isLoadingPropertyContent && selectedPropertyContent">{{ selectedPropertyContent }}</pre>
-
-    <div class="empty-content" *ngIf="!isLoadingPropertyContent && !selectedPropertyContent">
-      {{ currentTranslationService.translate('propertiesManager.noContent') || 'No content available' }}
-    </div>
-  </div>
+  }
 
   <div class="actions">
     <button
       class="download-button"
       (click)="downloadSelectedProperty()"
-      [disabled]="loading || !selectedPropertyFile">
-      <span *ngIf="!loading">{{ currentTranslationService.translate('propertiesManager.download') || 'Download Properties File' }}</span>
-      <span *ngIf="loading">{{ currentTranslationService.translate('propertiesManager.downloading') || 'Downloading...' }}</span>
+      [disabled]="loading() || !selectedPropertyFile()">
+      @if (!loading()) {
+        <span>{{ currentTranslationService.translate('propertiesManager.download') || 'Download Properties File' }}</span>
+      }
+      @if (loading()) {
+        <span>{{ currentTranslationService.translate('propertiesManager.downloading') || 'Downloading...' }}</span>
+      }
     </button>
   </div>
 
   <div class="messages">
-    <div class="error-message" *ngIf="error">{{ error }}</div>
-    <div class="success-message" *ngIf="success">{{ success }}</div>
+    @if (error()) {
+      <div class="error-message">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="success-message">{{ success() }}</div>
+    }
   </div>
 </div>
