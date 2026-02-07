@@ -1,0 +1,72 @@
+<div class="calendar-container">
+  <header class="calendar-header">
+    <h1>📅 Calendar Morocco</h1>
+    <p>Gestiona tus eventos y festividades marroquíes</p>
+  </header>
+
+  <div class="calendar-controls">
+    <div class="search-section">
+      <input 
+        type="text" 
+        [(ngModel)]="searchKeyword" 
+        placeholder="Buscar eventos..."
+        class="search-input"
+        (keyup.enter)="searchEvents()">
+      <button (click)="searchEvents()" class="search-btn">🔍</button>
+    </div>
+
+    <div class="filter-section">
+      <select [(ngModel)]="selectedEventType" (change)="filterByType()" class="filter-select">
+        <option value="">Todos los tipos</option>
+        <option *ngFor="let type of eventTypes" [value]="type">{{type}}</option>
+      </select>
+    </div>
+
+    <button (click)="openEventForm()" class="add-btn">➕ Nuevo Evento</button>
+  </div>
+
+  <div class="events-grid">
+    <div 
+      *ngFor="let event of filteredEvents" 
+      class="event-card"
+      [style.border-left-color]="getEventTypeColor(event.eventType)">
+      
+      <div class="event-header">
+        <h3>{{event.title}}</h3>
+        <span class="event-type" [style.background-color]="getEventTypeColor(event.eventType)">
+          {{event.eventType}}
+        </span>
+      </div>
+      
+      <p class="event-description">{{event.description}}</p>
+      
+      <div class="event-details">
+        <div class="event-time">
+          <strong>📅 Inicio:</strong> {{formatDateTime(event.startDate)}}
+        </div>
+        <div class="event-time">
+          <strong>📅 Fin:</strong> {{formatDateTime(event.endDate)}}
+        </div>
+        <div class="event-location" *ngIf="event.location">
+          <strong>📍 Lugar:</strong> {{event.location}}
+        </div>
+      </div>
+      
+      <div class="event-actions">
+        <button (click)="openEventForm(event)" class="edit-btn">✏️ Editar</button>
+        <button (click)="deleteEvent(event)" class="delete-btn">🗑️ Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="filteredEvents.length === 0" class="no-events">
+    <p>No se encontraron eventos. ¿Por qué no creates uno nuevo?</p>
+  </div>
+
+  <app-event-form 
+    *ngIf="showEventForm"
+    [event]="editingEvent"
+    (eventSaved)="onEventSaved()"
+    (formClosed)="closeEventForm()">
+  </app-event-form>
+</div>
