@@ -1,0 +1,97 @@
+<div class="generated-results-container">
+  <h2>Generated Results</h2>
+
+  <div class="form-group">
+    <div class="config-header">
+      <label for="competitionSelect">Competition</label>
+      <button
+        type="button"
+        (click)="refreshCompetitions()"
+        [disabled]="competitionLoading()"
+        class="refresh-btn">
+        @if (competitionLoading()) {
+          Refreshing...
+        } @else {
+          Refresh
+        }
+      </button>
+    </div>
+
+    <select
+      id="competitionSelect"
+      [ngModel]="selectedCompetitionId()"
+      (ngModelChange)="onCompetitionChange($event)"
+      class="form-control"
+      [disabled]="competitionLoading() || competitions().length === 0">
+      <option value="">
+        @if (competitionLoading()) {
+          Loading competitions...
+        } @else if (competitions().length === 0) {
+          No competitions available
+        } @else {
+          Select a competition
+        }
+      </option>
+      @for (competition of competitions(); track competition.id) {
+        <option [value]="competition.id">
+          {{ competition.name }}
+        </option>
+      }
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="seasonInput">Season (example: 2025-26)</label>
+    <input
+      id="seasonInput"
+      type="text"
+      class="form-control"
+      [ngModel]="selectedSeason()"
+      (ngModelChange)="onSeasonChange($event)"
+      placeholder="2025-26"
+      [disabled]="competitionLoading()">
+  </div>
+
+  <div class="list-section">
+    <h3>Available Full Calendar Files</h3>
+
+    @if (generatedFilesLoading()) {
+      <small class="info-text">Loading generated files...</small>
+    } @else if (!hasSelection()) {
+      <small class="info-text">Select competition and season to load generated files.</small>
+    } @else if (generatedFiles().length === 0) {
+      <small class="warning-text">No generated fullCalendar files found for this competition and season.</small>
+    } @else {
+      <div class="file-list">
+        @for (file of generatedFiles(); track file.downloadId) {
+          <div class="file-row">
+            <div class="file-meta">
+              <strong>{{ file.fileName }}</strong>
+              <span>Version: {{ file.version }}</span>
+              <span>Folder: {{ file.folder || '-' }}</span>
+              <span>{{ formatBytes(file.size) }} · {{ formatDate(file.lastModified) }}</span>
+            </div>
+            <button
+              type="button"
+              class="row-download-btn"
+              (click)="downloadGeneratedFile(file.downloadId)"
+              [disabled]="downloadingDownloadId() === file.downloadId || generatedFilesLoading()">
+              @if (downloadingDownloadId() === file.downloadId) {
+                Downloading...
+              } @else {
+                Download
+              }
+            </button>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  @if (error()) {
+    <div class="error">{{ error() }}</div>
+  }
+  @if (success()) {
+    <div class="success">{{ success() }}</div>
+  }
+</div>

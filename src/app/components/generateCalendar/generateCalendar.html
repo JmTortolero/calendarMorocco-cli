@@ -108,6 +108,42 @@
     }
   </button>
 
+  <div class="logs-section">
+    <div class="logs-header">
+      <label for="generationLogs">Generation Logs</label>
+      <button
+        type="button"
+        class="refresh-logs-btn"
+        (click)="refreshGenerationLogs()"
+        [disabled]="!canRefreshGenerationLogs()">
+        @if (generationLogsLoading()) {
+          Refreshing...
+        } @else {
+          Refresh Logs
+        }
+      </button>
+    </div>
+
+    <textarea
+      id="generationLogs"
+      class="logs-textarea"
+      [value]="generationLogsText()"
+      readonly
+      rows="12"
+      placeholder="Generation logs will appear here after running calendar generation...">
+    </textarea>
+
+    @if (!generationLogsLoading() && !hasGenerationLogs()) {
+      <small class="help-text">No logs loaded yet.</small>
+    }
+    @if (lastGenerationId()) {
+      <small class="help-text">Generation ID: {{ lastGenerationId() }}</small>
+    }
+    @if (generationLogsError()) {
+      <small class="warning-text">{{ generationLogsError() }}</small>
+    }
+  </div>
+
   <div class="generation-info">
     @if (competitionLoading()) {
       <small class="info-text">

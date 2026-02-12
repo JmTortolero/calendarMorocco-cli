@@ -50,15 +50,6 @@
   font-weight: 400;
 }
 
-.file-selected {
-  display: block;
-  margin-top: 4px;
-  color: #10b981;
-  font-size: 0.75rem;
-  line-height: 1rem;
-  font-weight: 500;
-}
-
 .generate-button {
   background: #3b82f6;
   color: white;
@@ -84,6 +75,47 @@
   background: #9ca3af;
   cursor: not-allowed;
   box-shadow: none;
+}
+
+.logs-section {
+  margin-top: 14px;
+}
+
+.logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.refresh-logs-btn {
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.refresh-logs-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.logs-textarea {
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  box-sizing: border-box;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  line-height: 1.2rem;
+  font-family: Consolas, "Courier New", monospace;
+  color: #111827;
+  background: #f9fafb;
 }
 
 .error {

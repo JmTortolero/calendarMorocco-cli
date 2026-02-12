@@ -13,6 +13,15 @@ interface ExcelFileItem {
   lastModified: string | null;
 }
 
+interface GenerationLogsResponse {
+  generationId: string;
+  status: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  errorMessage: string | null;
+  lines: string[];
+}
+
 type ExcelListResponse =
   | ExcelFileItem[]
   | string[]
@@ -29,6 +38,10 @@ export class GenerateCalendar implements OnInit {
   loading = signal(false);
   error = signal<string | null>(null);
   success = signal<string | null>(null);
+  lastGenerationId = signal('');
+  generationLogsLoading = signal(false);
+  generationLogs = signal<string[]>([]);
+  generationLogsError = signal<string | null>(null);
 
   competitionLoading = signal(false);
   competitions = signal<CompetitionOption[]>([]);
@@ -46,6 +59,11 @@ export class GenerateCalendar implements OnInit {
     const value = this.lastRoundToAssign();
     return value !== null && Number.isInteger(value) && value > 0;
   });
+  hasGenerationLogs = computed(() => this.generationLogs().length > 0);
+  generationLogsText = computed(() => this.generationLogs().join('\n'));
+  canRefreshGenerationLogs = computed(() =>
+    !this.generationLogsLoading() && this.lastGenerationId().trim().length > 0
+  );
   canGenerate = computed(() =>
     !this.loading() &&
     !this.competitionLoading() &&
@@ -67,6 +85,7 @@ export class GenerateCalendar implements OnInit {
       excelFilesCount: this.excelFiles().length,
       lastRoundToAssign: this.lastRoundToAssign(),
       lastRoundValid: this.hasValidLastRoundToAssign(),
+      hasGenerationLogs: this.hasGenerationLogs(),
       canGenerate: this.canGenerate(),
       loading: this.loading()
     });
@@ -240,6 +259,7 @@ export class GenerateCalendar implements OnInit {
     this.loading.set(true);
     this.error.set(null);
     this.success.set(null);
+    this.generationLogsError.set(null);
 
     try {
       const formData = new FormData();
@@ -285,13 +305,55 @@ export class GenerateCalendar implements OnInit {
         }
       }
 
+      const generationId = response.headers.get('X-Generation-Id') ?? '';
+      this.lastGenerationId.set(generationId);
+
       this.downloadFile(blob, filename);
       this.success.set(this.translationService.translate('calendar.success'));
+      await this.refreshGenerationLogs(generationId);
     } catch (e: any) {
-      this.error.set(e.message || this.translationService.translate('calendar.errorUnknown'));
+      const generationId = e?.headers?.get?.('X-Generation-Id') ?? '';
+      if (generationId) {
+        this.lastGenerationId.set(generationId);
+        await this.refreshGenerationLogs(generationId);
+      }
+
+      const backendMessage = typeof e?.error === 'string'
+        ? e.error
+        : e?.error?.message;
+
+      this.error.set(backendMessage || e?.message || this.translationService.translate('calendar.errorUnknown'));
       this.success.set(null);
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  async refreshGenerationLogs(generationIdInput?: string): Promise<void> {
+    const generationId = (generationIdInput ?? this.lastGenerationId()).trim();
+    if (!generationId) {
+      this.generationLogsError.set('Run a generation first to load logs.');
+      return;
+    }
+
+    this.generationLogsLoading.set(true);
+    this.generationLogsError.set(null);
+
+    try {
+      const endpoint = `/api/calendar/generations/${encodeURIComponent(generationId)}/logs`;
+      const response = await firstValueFrom(this.http.get<GenerationLogsResponse>(endpoint));
+      const parsedLogs = this.parseAndSanitizeLogs(response?.lines ?? []);
+      this.generationLogs.set(parsedLogs);
+
+      if (response?.status === 'FAILED' && response.errorMessage) {
+        this.generationLogsError.set(response.errorMessage);
+      } else if (parsedLogs.length === 0) {
+        this.generationLogsError.set('No logs available for this generation.');
+      }
+    } catch (error: any) {
+      this.generationLogsError.set(error?.error?.message || error?.message || 'Error loading generation logs.');
+    } finally {
+      this.generationLogsLoading.set(false);
     }
   }
 
@@ -376,5 +438,84 @@ export class GenerateCalendar implements OnInit {
     const endYearTwoDigits = String((startYear + 1) % 100).padStart(2, '0');
 
     return `${startYear}-${endYearTwoDigits}`;
+  }
+
+  private parseAndSanitizeLogs(input: unknown): string[] {
+    const parsedItems = this.extractLogItems(input);
+    return parsedItems
+      .map(item => this.sanitizeLogLine(item))
+      .map(item => item.trim())
+      .filter(item => item.length > 0);
+  }
+
+  private extractLogItems(input: unknown): string[] {
+    if (Array.isArray(input)) {
+      return input.map(item => String(item ?? ''));
+    }
+
+    if (typeof input === 'string') {
+      const trimmed = input.trim();
+      if (!trimmed) {
+        return [];
+      }
+
+      try {
+        const parsed = JSON.parse(trimmed) as unknown;
+        return this.extractLogItemsFromJson(parsed);
+      } catch {
+        return trimmed.split(/\r?\n/);
+      }
+    }
+
+    if (input && typeof input === 'object') {
+      return this.extractLogItemsFromJson(input);
+    }
+
+    return [];
+  }
+
+  private extractLogItemsFromJson(parsed: unknown): string[] {
+    if (typeof parsed === 'string') {
+      return parsed.split(/\r?\n/);
+    }
+
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map(item => String(item ?? ''))
+        .flatMap(item => item.split(/\r?\n/));
+    }
+
+    if (parsed && typeof parsed === 'object') {
+      const obj = parsed as Record<string, unknown>;
+      const candidate = obj['logs'] ?? obj['lines'] ?? obj['items'] ?? obj['content'] ?? '';
+      if (Array.isArray(candidate)) {
+        return candidate
+          .map(item => String(item ?? ''))
+          .flatMap(item => item.split(/\r?\n/));
+      }
+      if (typeof candidate === 'string') {
+        return candidate.split(/\r?\n/);
+      }
+    }
+
+    return [];
+  }
+
+  private sanitizeLogLine(line: string): string {
+    const withPrefixRemoved = line.replace(
+      /^\d{4}-\d{2}-\d{2}T[^\s]+\s+\w+\s+\d+\s+---\s+\[[^\]]+\]\s+\[[^\]]+\]\s+[^:]+:\s*/,
+      ''
+    );
+
+    if (withPrefixRemoved !== line) {
+      return withPrefixRemoved;
+    }
+
+    const firstUsefulColon = line.indexOf(': ');
+    if (firstUsefulColon >= 0 && firstUsefulColon < line.length - 2) {
+      return line.substring(firstUsefulColon + 2);
+    }
+
+    return line;
   }
 }
