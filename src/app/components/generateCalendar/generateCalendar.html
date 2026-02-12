@@ -56,7 +56,7 @@
     <select
       id="excelFromStorage"
       [ngModel]="selectedExcelFileName()"
-      (ngModelChange)="selectedExcelFileName.set($event)"
+      (ngModelChange)="onExcelFileFromStorageChange($event)"
       class="form-control"
       [disabled]="excelFilesLoading() || !selectedCompetitionId() || !selectedSeason() || excelFiles().length === 0">
       <option value="">

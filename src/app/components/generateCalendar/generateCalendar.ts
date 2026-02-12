@@ -155,9 +155,14 @@ export class GenerateCalendar implements OnInit {
   }
 
   onCompetitionChange(competitionId: string): void {
+    const competitionChanged = competitionId !== this.selectedCompetitionId();
     this.selectedCompetitionId.set(competitionId);
     this.excelFiles.set([]);
     this.selectedExcelFileName.set('');
+    this.lastRoundToAssign.set(null);
+    if (competitionChanged) {
+      this.clearGenerationLogsState();
+    }
 
     if (competitionId && this.selectedSeason()) {
       this.loadExcelFiles();
@@ -165,12 +170,24 @@ export class GenerateCalendar implements OnInit {
   }
 
   onSeasonChange(season: string): void {
+    const seasonChanged = season !== this.selectedSeason();
     this.selectedSeason.set(season);
     this.excelFiles.set([]);
     this.selectedExcelFileName.set('');
+    if (seasonChanged) {
+      this.clearGenerationLogsState();
+    }
 
     if (season && this.selectedCompetitionId()) {
       this.loadExcelFiles();
+    }
+  }
+
+  onExcelFileFromStorageChange(fileName: string): void {
+    const changed = fileName !== this.selectedExcelFileName();
+    this.selectedExcelFileName.set(fileName);
+    if (changed) {
+      this.clearGenerationLogsState();
     }
   }
 
@@ -210,18 +227,23 @@ export class GenerateCalendar implements OnInit {
   }
 
   onLastRoundToAssignChange(value: string | number | null): void {
+    const previousValue = this.lastRoundToAssign();
+    let nextValue: number | null = null;
+
     if (value === null || value === '') {
-      this.lastRoundToAssign.set(null);
-      return;
+      nextValue = null;
+    } else {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) {
+        nextValue = parsed;
+      }
     }
 
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) {
-      this.lastRoundToAssign.set(parsed);
-      return;
-    }
+    this.lastRoundToAssign.set(nextValue);
 
-    this.lastRoundToAssign.set(null);
+    if (previousValue !== nextValue) {
+      this.clearGenerationLogsState();
+    }
   }
 
   async generateCalendar(): Promise<void> {
@@ -517,5 +539,11 @@ export class GenerateCalendar implements OnInit {
     }
 
     return line;
+  }
+
+  private clearGenerationLogsState(): void {
+    this.lastGenerationId.set('');
+    this.generationLogs.set([]);
+    this.generationLogsError.set(null);
   }
 }
