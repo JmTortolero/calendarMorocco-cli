@@ -53,35 +53,65 @@
   </div>
 
   <div class="list-section">
-    <h3>Available Full Calendar Files</h3>
+    <h3>Available Generated Files (fullCalendar + ZIP)</h3>
 
     @if (generatedFilesLoading()) {
       <small class="info-text">Loading generated files...</small>
     } @else if (!hasSelection()) {
       <small class="info-text">Select competition and season to load generated files.</small>
-    } @else if (generatedFiles().length === 0) {
-      <small class="warning-text">No generated fullCalendar files found for this competition and season.</small>
+    } @else if (versionGroups().length === 0) {
+      <small class="warning-text">No generated fullCalendar or ZIP files found for this competition and season.</small>
     } @else {
-      <div class="file-list">
-        @for (file of generatedFiles(); track file.downloadId) {
-          <div class="file-row">
-            <div class="file-meta">
-              <strong>{{ file.fileName }}</strong>
-              <span>Version: {{ file.version }}</span>
-              <span>Folder: {{ file.folder || '-' }}</span>
-              <span>{{ formatBytes(file.size) }} · {{ formatDate(file.lastModified) }}</span>
+      <div class="version-list">
+        @for (group of versionGroups(); track group.version) {
+          <div class="version-row">
+            <div class="version-header">
+              <span class="version-badge">{{ group.version }}</span>
             </div>
-            <button
-              type="button"
-              class="row-download-btn"
-              (click)="downloadGeneratedFile(file.downloadId)"
-              [disabled]="downloadingDownloadId() === file.downloadId || generatedFilesLoading()">
-              @if (downloadingDownloadId() === file.downloadId) {
-                Downloading...
-              } @else {
-                Download
+            <div class="version-files">
+              @if (group.xlsxFile; as xlsxFile) {
+                <div class="file-card">
+                  <div class="file-meta">
+                    <strong>{{ xlsxFile.fileName }}</strong>
+                    <span>Type: {{ xlsxFile.artifactType }}</span>
+                    <span>Folder: {{ xlsxFile.folder || '-' }}</span>
+                    <span>{{ formatBytes(xlsxFile.size) }} - {{ formatDate(xlsxFile.lastModified) }}</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="row-download-btn"
+                    (click)="downloadGeneratedFile(xlsxFile)"
+                    [disabled]="downloadingFileName() === xlsxFile.fileName || generatedFilesLoading()">
+                    @if (downloadingFileName() === xlsxFile.fileName) {
+                      Downloading...
+                    } @else {
+                      Download
+                    }
+                  </button>
+                </div>
               }
-            </button>
+              @if (group.zipFile; as zipFile) {
+                <div class="file-card">
+                  <div class="file-meta">
+                    <strong>{{ zipFile.fileName }}</strong>
+                    <span>Type: {{ zipFile.artifactType }}</span>
+                    <span>Folder: {{ zipFile.folder || '-' }}</span>
+                    <span>{{ formatBytes(zipFile.size) }} - {{ formatDate(zipFile.lastModified) }}</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="row-download-btn zip-btn"
+                    (click)="downloadGeneratedFile(zipFile)"
+                    [disabled]="downloadingFileName() === zipFile.fileName || generatedFilesLoading()">
+                    @if (downloadingFileName() === zipFile.fileName) {
+                      Downloading...
+                    } @else {
+                      Download ZIP
+                    }
+                  </button>
+                </div>
+              }
+            </div>
           </div>
         }
       </div>

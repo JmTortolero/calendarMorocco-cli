@@ -80,9 +80,54 @@
 }
 
 .file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.version-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.version-row {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   overflow: hidden;
+}
+
+.version-header {
+  background: #f3f4f6;
+  padding: 0.5rem 0.85rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.version-badge {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #1f2937;
+  background: #dbeafe;
+  padding: 0.15rem 0.55rem;
+  border-radius: 4px;
+}
+
+.version-files {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+}
+
+.file-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  min-height: 90px;
 }
 
 .file-row {
@@ -91,11 +136,9 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.7rem 0.85rem;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.file-row:last-child {
-  border-bottom: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  min-height: 108px;
 }
 
 .file-meta {
@@ -131,6 +174,14 @@
 .row-download-btn:disabled {
   background: #9ca3af;
   cursor: not-allowed;
+}
+
+.zip-btn {
+  background: #7c3aed;
+}
+
+.zip-btn:hover:not(:disabled) {
+  background: #6d28d9;
 }
 
 .info-text {
@@ -169,9 +220,19 @@
     padding: 1rem;
   }
 
-  .file-row {
+  .file-list {
+    grid-template-columns: 1fr;
+  }
+
+  .version-files {
+    grid-template-columns: 1fr;
+  }
+
+  .file-row,
+  .file-card {
     flex-direction: column;
     align-items: flex-start;
+    min-height: auto;
   }
 
   .row-download-btn {

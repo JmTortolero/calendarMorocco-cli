@@ -6,18 +6,46 @@ import { firstValueFrom } from 'rxjs';
 import { CompetitionCatalog } from '../../core/services';
 import { CompetitionOption } from '../../core/services/competition';
 
-interface GeneratedCalendarItem {
+type ArtifactType = 'XLSX' | 'ZIP';
+
+interface GeneratedArtifactItem {
   fileName: string;
   version: string;
   folder: string;
   size: number | null;
   lastModified: string | null;
-  downloadId: string;
+  artifactType: ArtifactType;
+  downloadId: string | null;
 }
 
-type GeneratedCalendarListResponse =
-  | GeneratedCalendarItem[]
-  | { items?: GeneratedCalendarItem[]; files?: GeneratedCalendarItem[] };
+interface GeneratedArtifactRaw {
+  fileName?: string | null;
+  name?: string | null;
+  version?: string | null;
+  folder?: string | null;
+  size?: number | null;
+  lastModified?: string | null;
+  downloadId?: string | null;
+  id?: string | null;
+}
+
+type GeneratedArtifactListResponse =
+  | GeneratedArtifactRaw[]
+  | string[]
+  | {
+      items?: GeneratedArtifactRaw[] | string[];
+      files?: GeneratedArtifactRaw[] | string[];
+      generated?: GeneratedArtifactRaw[] | string[];
+      results?: GeneratedArtifactRaw[] | string[];
+      artifacts?: GeneratedArtifactRaw[] | string[];
+    };
+
+interface VersionGroup {
+  version: string;
+  versionNumber: number;
+  xlsxFile: GeneratedArtifactItem | null;
+  zipFile: GeneratedArtifactItem | null;
+}
 
 @Component({
   selector: 'app-generated-results',
@@ -33,8 +61,8 @@ export class GeneratedResults implements OnInit {
   selectedSeason = signal(this.getDefaultSeason());
 
   generatedFilesLoading = signal(false);
-  generatedFiles = signal<GeneratedCalendarItem[]>([]);
-  downloadingDownloadId = signal<string | null>(null);
+  generatedFiles = signal<GeneratedArtifactItem[]>([]);
+  downloadingFileName = signal<string | null>(null);
 
   error = signal<string | null>(null);
   success = signal<string | null>(null);
@@ -42,6 +70,32 @@ export class GeneratedResults implements OnInit {
   hasSelection = computed(() =>
     this.selectedCompetitionId().length > 0 && this.selectedSeason().length > 0
   );
+
+  versionGroups = computed<VersionGroup[]>(() => {
+    const files = this.generatedFiles();
+    const groupMap = new Map<string, VersionGroup>();
+
+    for (const file of files) {
+      const version = file.version;
+      if (!groupMap.has(version)) {
+        groupMap.set(version, {
+          version,
+          versionNumber: this.toVersionNumber(version),
+          xlsxFile: null,
+          zipFile: null
+        });
+      }
+      const group = groupMap.get(version)!;
+      if (file.artifactType === 'XLSX') {
+        group.xlsxFile = file;
+      } else if (file.artifactType === 'ZIP') {
+        group.zipFile = file;
+      }
+    }
+
+    return Array.from(groupMap.values())
+      .sort((a, b) => b.versionNumber - a.versionNumber);
+  });
 
   private readonly http = inject(HttpClient);
   private readonly competitionService = inject(CompetitionCatalog);
@@ -130,61 +184,111 @@ export class GeneratedResults implements OnInit {
 
     this.generatedFilesLoading.set(true);
     this.error.set(null);
+    this.success.set(null);
+
+    const endpoints = this.buildGeneratedListEndpoints();
+    let lastNon404Error: any = null;
+    let successfulEndpointCount = 0;
+    const collectedFiles: GeneratedArtifactItem[] = [];
 
     try {
-      const url = `/api/calendar/competitions/${encodeURIComponent(this.selectedCompetitionId())}/seasons/${encodeURIComponent(this.selectedSeason())}/generated-full-calendars`;
-      const response = await firstValueFrom(this.http.get<GeneratedCalendarListResponse>(url));
-      const normalized = this.normalizeGeneratedFileResponse(response);
-      this.generatedFiles.set(normalized);
-    } catch (e: any) {
-      if (e?.status === 404) {
-        this.generatedFiles.set([]);
-      } else {
-        this.error.set(e?.error?.message || e?.message || 'Error loading generated files.');
+      for (const endpoint of endpoints) {
+        try {
+          const response = await firstValueFrom(this.http.get<GeneratedArtifactListResponse>(endpoint));
+          const normalized = this.normalizeGeneratedFileResponse(response);
+          successfulEndpointCount++;
+          collectedFiles.push(...normalized);
+        } catch (error: any) {
+          if (error?.status === 404 || error?.status === 405) {
+            continue;
+          }
+          lastNon404Error = error;
+        }
       }
+
+      if (lastNon404Error && successfulEndpointCount === 0) {
+        throw lastNon404Error;
+      }
+
+      const merged = this.mergeGeneratedFiles(collectedFiles);
+      this.generatedFiles.set(merged);
+    } catch (e: any) {
+      this.error.set(e?.error?.message || e?.message || 'Error loading generated files.');
+      this.generatedFiles.set([]);
     } finally {
       this.generatedFilesLoading.set(false);
     }
   }
 
-  async downloadGeneratedFile(downloadId: string): Promise<void> {
+  async downloadGeneratedFile(file: GeneratedArtifactItem): Promise<void> {
     if (!this.selectedCompetitionId() || !this.selectedSeason()) {
       this.error.set('Please select competition and season first.');
       this.success.set(null);
       return;
     }
 
-    this.downloadingDownloadId.set(downloadId);
+    this.downloadingFileName.set(file.fileName);
     this.error.set(null);
     this.success.set(null);
 
+    const base = `/api/calendar/competitions/${encodeURIComponent(this.selectedCompetitionId())}/seasons/${encodeURIComponent(this.selectedSeason())}`;
+    const encodedFileName = encodeURIComponent(file.fileName);
+    const endpoints: string[] = [];
+
+    if (file.downloadId) {
+      endpoints.push(`${base}/generated-full-calendars/${encodeURIComponent(file.downloadId)}`);
+    }
+
+    endpoints.push(`${base}/generated-results/${encodedFileName}`);
+    endpoints.push(`${base}/generated-full-calendars/${encodedFileName}`);
+    endpoints.push(`${base}/results/${encodedFileName}`);
+    endpoints.push(`${base}/artifacts/${encodedFileName}`);
+    endpoints.push(`${base}/results/download?fileName=${encodedFileName}`);
+
+    let lastNon404Error: any = null;
+
     try {
-      const url = `/api/calendar/competitions/${encodeURIComponent(this.selectedCompetitionId())}/seasons/${encodeURIComponent(this.selectedSeason())}/generated-full-calendars/${encodeURIComponent(downloadId)}`;
-      const response = await firstValueFrom(this.http.get(url, {
-        responseType: 'blob',
-        observe: 'response'
-      }));
+      for (const endpoint of Array.from(new Set(endpoints))) {
+        try {
+          const response = await firstValueFrom(this.http.get(endpoint, {
+            responseType: 'blob',
+            observe: 'response'
+          }));
 
-      if (!response || response.status !== 200 || !response.body || response.body.size === 0) {
-        throw new Error('Invalid file response from backend.');
-      }
+          if (!response || response.status !== 200 || !response.body || response.body.size === 0) {
+            continue;
+          }
 
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = 'fullCalendar.xlsx';
-      if (contentDisposition) {
-        const matches = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-        if (matches && matches[1]) {
-          filename = matches[1].replace(/['"]/g, '');
+          const contentDisposition = response.headers.get('Content-Disposition');
+          let filename = file.fileName;
+          if (contentDisposition) {
+            const matches = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+            if (matches && matches[1]) {
+              filename = matches[1].replace(/['"]/g, '');
+            }
+          }
+
+          this.downloadFile(response.body, filename);
+          this.success.set(`Generated file '${filename}' downloaded successfully.`);
+          return;
+        } catch (error: any) {
+          if (error?.status === 404 || error?.status === 405) {
+            continue;
+          }
+          lastNon404Error = error;
         }
       }
 
-      this.downloadFile(response.body, filename);
-      this.success.set(`Generated calendar '${filename}' downloaded successfully.`);
+      if (lastNon404Error) {
+        throw lastNon404Error;
+      }
+
+      throw new Error(`Generated file not found on backend: ${file.fileName}`);
     } catch (e: any) {
-      this.error.set(e?.error?.message || e?.message || 'Error downloading generated calendar file.');
+      this.error.set(e?.error?.message || e?.message || 'Error downloading generated file.');
       this.success.set(null);
     } finally {
-      this.downloadingDownloadId.set(null);
+      this.downloadingFileName.set(null);
     }
   }
 
@@ -217,35 +321,211 @@ export class GeneratedResults implements OnInit {
     return date.toLocaleString();
   }
 
-  private normalizeGeneratedFileResponse(response: GeneratedCalendarListResponse): GeneratedCalendarItem[] {
+  private normalizeGeneratedFileResponse(response: GeneratedArtifactListResponse): GeneratedArtifactItem[] {
     const source = this.extractListSource(response);
     return source
-      .filter(item => item && item.fileName && item.downloadId)
-      .map(item => ({
-        fileName: item.fileName,
-        version: item.version || 'base',
-        folder: item.folder || '',
-        size: typeof item.size === 'number' ? item.size : null,
-        lastModified: item.lastModified || null,
-        downloadId: item.downloadId
-      }))
-      .sort((a, b) => a.fileName.localeCompare(b.fileName));
+      .map(item => this.normalizeGeneratedItem(item))
+      .filter((item): item is GeneratedArtifactItem => item !== null)
+      .filter(item => this.isSupportedGeneratedArtifact(item.fileName))
+      .sort((a, b) => this.compareArtifacts(a, b));
   }
 
-  private extractListSource(response: GeneratedCalendarListResponse): GeneratedCalendarItem[] {
+  private extractListSource(response: GeneratedArtifactListResponse): Array<GeneratedArtifactRaw | string> {
     if (Array.isArray(response)) {
-      return response;
+      return response as Array<GeneratedArtifactRaw | string>;
     }
 
     if (response && Array.isArray(response.items)) {
-      return response.items;
+      return response.items as Array<GeneratedArtifactRaw | string>;
     }
 
     if (response && Array.isArray(response.files)) {
-      return response.files;
+      return response.files as Array<GeneratedArtifactRaw | string>;
+    }
+
+    if (response && Array.isArray(response.generated)) {
+      return response.generated as Array<GeneratedArtifactRaw | string>;
+    }
+
+    if (response && Array.isArray(response.results)) {
+      return response.results as Array<GeneratedArtifactRaw | string>;
+    }
+
+    if (response && Array.isArray(response.artifacts)) {
+      return response.artifacts as Array<GeneratedArtifactRaw | string>;
     }
 
     return [];
+  }
+
+  private getDefaultSeason(): string {
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
+    const startYear = month >= 6 ? year : year - 1;
+    const endYearTwoDigits = String((startYear + 1) % 100).padStart(2, '0');
+
+    return `${startYear}-${endYearTwoDigits}`;
+  }
+
+  private normalizeGeneratedItem(item: GeneratedArtifactRaw | string): GeneratedArtifactItem | null {
+    const fileName = this.resolveFileName(item);
+    if (!fileName) {
+      return null;
+    }
+
+    const objectItem = typeof item === 'string' ? null : item;
+    const artifactType = this.getArtifactType(fileName);
+
+    return {
+      fileName,
+      version: this.extractVersion(fileName, objectItem?.version),
+      folder: typeof objectItem?.folder === 'string' ? objectItem.folder : '',
+      size: typeof objectItem?.size === 'number' ? objectItem.size : null,
+      lastModified: typeof objectItem?.lastModified === 'string' ? objectItem.lastModified : null,
+      artifactType,
+      downloadId: this.resolveDownloadId(objectItem)
+    };
+  }
+
+  private resolveFileName(item: GeneratedArtifactRaw | string): string {
+    if (typeof item === 'string') {
+      return item.trim();
+    }
+
+    const fileName = typeof item?.fileName === 'string'
+      ? item.fileName
+      : (typeof item?.name === 'string' ? item.name : '');
+
+    return fileName.trim();
+  }
+
+  private resolveDownloadId(item: GeneratedArtifactRaw | null): string | null {
+    if (!item) {
+      return null;
+    }
+
+    const candidate = typeof item.downloadId === 'string' && item.downloadId.trim().length > 0
+      ? item.downloadId
+      : (typeof item.id === 'string' && item.id.trim().length > 0 ? item.id : '');
+
+    return candidate ? candidate.trim() : null;
+  }
+
+  private getArtifactType(fileName: string): ArtifactType {
+    return /\.zip$/i.test(fileName.trim()) ? 'ZIP' : 'XLSX';
+  }
+
+  private isSupportedGeneratedArtifact(fileName: string): boolean {
+    const normalized = fileName.trim();
+
+    if (/^out.*\.csv$/i.test(normalized)) {
+      return false;
+    }
+
+    if (/^fullcalendar.*\.xlsx$/i.test(normalized)) {
+      return true;
+    }
+
+    return /\.zip$/i.test(normalized);
+  }
+
+  private extractVersion(fileName: string, fallbackVersion: string | null | undefined): string {
+    if (typeof fallbackVersion === 'string' && fallbackVersion.trim().length > 0) {
+      return fallbackVersion.trim();
+    }
+
+    const versionMatch = fileName.match(/-v(\d+)(?=\.(xlsx|zip)$)/i);
+    if (versionMatch && versionMatch[1]) {
+      return `v${versionMatch[1]}`;
+    }
+
+    return 'v0';
+  }
+
+  private compareArtifacts(a: GeneratedArtifactItem, b: GeneratedArtifactItem): number {
+    const typeRankA = a.artifactType === 'XLSX' ? 0 : 1;
+    const typeRankB = b.artifactType === 'XLSX' ? 0 : 1;
+
+    if (typeRankA !== typeRankB) {
+      return typeRankA - typeRankB;
+    }
+
+    const versionA = this.toVersionNumber(a.version);
+    const versionB = this.toVersionNumber(b.version);
+    if (versionA !== versionB) {
+      return versionB - versionA;
+    }
+
+    return a.fileName.localeCompare(b.fileName);
+  }
+
+  private toVersionNumber(version: string): number {
+    const match = version.match(/v(\d+)/i);
+    if (!match || !match[1]) {
+      return 0;
+    }
+
+    return Number(match[1]);
+  }
+
+  private buildGeneratedListEndpoints(): string[] {
+    const competitionId = encodeURIComponent(this.selectedCompetitionId());
+    const season = encodeURIComponent(this.selectedSeason());
+    const base = `/api/calendar/competitions/${competitionId}/seasons/${season}`;
+
+    return [
+      `${base}/generated-full-calendars`,
+      `${base}/generated-results`,
+      `${base}/results`
+    ];
+  }
+
+  private mergeGeneratedFiles(files: GeneratedArtifactItem[]): GeneratedArtifactItem[] {
+    const byKey = new Map<string, GeneratedArtifactItem>();
+
+    for (const file of files) {
+      const key = `${file.version}::${file.artifactType}`.toLowerCase();
+      const previous = byKey.get(key);
+
+      if (!previous) {
+        byKey.set(key, file);
+        continue;
+      }
+
+      const keep = this.shouldReplaceArtifact(previous, file) ? file : previous;
+      byKey.set(key, keep);
+    }
+
+    return Array.from(byKey.values()).sort((a, b) => this.compareArtifacts(a, b));
+  }
+
+  private shouldReplaceArtifact(current: GeneratedArtifactItem, candidate: GeneratedArtifactItem): boolean {
+    // Prefer shorter folder path (main version directory vs nested subdirectory)
+    const currentFolderDepth = (current.folder || '').split('/').filter(Boolean).length;
+    const candidateFolderDepth = (candidate.folder || '').split('/').filter(Boolean).length;
+    if (currentFolderDepth !== candidateFolderDepth) {
+      return candidateFolderDepth < currentFolderDepth;
+    }
+
+    const currentTime = current.lastModified ? new Date(current.lastModified).getTime() : 0;
+    const candidateTime = candidate.lastModified ? new Date(candidate.lastModified).getTime() : 0;
+
+    if (candidateTime !== currentTime) {
+      return candidateTime > currentTime;
+    }
+
+    const currentSize = current.size ?? 0;
+    const candidateSize = candidate.size ?? 0;
+    if (candidateSize !== currentSize) {
+      return candidateSize > currentSize;
+    }
+
+    if (!current.downloadId && candidate.downloadId) {
+      return true;
+    }
+
+    return false;
   }
 
   private downloadFile(blob: Blob, filename: string): void {
@@ -262,15 +542,5 @@ export class GeneratedResults implements OnInit {
     setTimeout(() => {
       window.URL.revokeObjectURL(url);
     }, 100);
-  }
-
-  private getDefaultSeason(): string {
-    const now = new Date();
-    const month = now.getMonth();
-    const year = now.getFullYear();
-    const startYear = month >= 6 ? year : year - 1;
-    const endYearTwoDigits = String((startYear + 1) % 100).padStart(2, '0');
-
-    return `${startYear}-${endYearTwoDigits}`;
   }
 }

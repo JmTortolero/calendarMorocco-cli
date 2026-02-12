@@ -88,18 +88,38 @@
   </div>
 
   <div class="upload-section">
-    <h3>Upload Excel File</h3>
+    <div class="upload-title-row">
+      <h3>Upload Excel File</h3>
+      <button
+        type="button"
+        class="info-icon-btn"
+        (click)="toggleFileNameHelp()"
+        title="Show file name format">
+        i
+      </button>
+    </div>
+
+    @if (showFileNameHelp()) {
+      <div class="filename-help-popup">
+        <strong>File name format</strong>
+        <p>Use this pattern (case-insensitive): <code>{{ expectedExcelFilePattern() }}</code></p>
+        <p>Examples: <code>CalendarD1-v0.xlsx</code>, <code>CalendarD2-v5.xlsx</code></p>
+      </div>
+    }
 
     <input
       id="excelUpload"
       type="file"
-      accept=".xlsx,.xls"
+      accept=".xlsx"
       (change)="onExcelFileChange($event)"
       class="form-control"
       [disabled]="uploading()">
 
     @if (selectedExcelFile()) {
       <small class="file-selected">Selected: {{ selectedExcelFile()?.name }}</small>
+    }
+    @if (excelFileNameValidationError()) {
+      <small class="warning-text">{{ excelFileNameValidationError() }}</small>
     }
 
     <button

@@ -34,18 +34,35 @@ export class ExcelManager implements OnInit {
   excelFiles = signal<ExcelFileItem[]>([]);
 
   selectedExcelFile = signal<File | null>(null);
+  showFileNameHelp = signal(false);
 
   uploading = signal(false);
   downloadingFileName = signal<string | null>(null);
   error = signal<string | null>(null);
   success = signal<string | null>(null);
+  excelFileNameValidationError = computed(() => {
+    const selectedFile = this.selectedExcelFile();
+    if (!selectedFile) {
+      return null;
+    }
+
+    return this.getExcelFileNameValidationError(selectedFile.name);
+  });
+  expectedExcelFilePattern = computed(() => {
+    const expectedDivision = this.inferExpectedDivision();
+    if (expectedDivision) {
+      return `Calendar${expectedDivision}-v<number>.xlsx`;
+    }
+    return 'CalendarD1-v<number>.xlsx or CalendarD2-v<number>.xlsx';
+  });
 
   canUpload = computed(() =>
     !this.uploading() &&
     !this.excelFilesLoading() &&
     this.selectedCompetitionId().length > 0 &&
     this.selectedSeason().length > 0 &&
-    this.selectedExcelFile() !== null
+    this.selectedExcelFile() !== null &&
+    this.excelFileNameValidationError() === null
   );
 
   private readonly http = inject(HttpClient);
@@ -112,6 +129,8 @@ export class ExcelManager implements OnInit {
   onCompetitionChange(competitionId: string): void {
     this.selectedCompetitionId.set(competitionId);
     this.excelFiles.set([]);
+    this.selectedExcelFile.set(null);
+    this.showFileNameHelp.set(false);
 
     if (competitionId && this.selectedSeason()) {
       this.loadExcelFiles();
@@ -131,9 +150,14 @@ export class ExcelManager implements OnInit {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       this.selectedExcelFile.set(input.files[0]);
+      this.success.set(null);
     } else {
       this.selectedExcelFile.set(null);
     }
+  }
+
+  toggleFileNameHelp(): void {
+    this.showFileNameHelp.update(current => !current);
   }
 
   async loadExcelFiles(): Promise<void> {
@@ -177,6 +201,13 @@ export class ExcelManager implements OnInit {
     const excelFile = this.selectedExcelFile();
     if (!excelFile) {
       this.error.set('Please choose an Excel file to upload.');
+      this.success.set(null);
+      return;
+    }
+
+    const fileNameValidationError = this.getExcelFileNameValidationError(excelFile.name);
+    if (fileNameValidationError) {
+      this.error.set(fileNameValidationError);
       this.success.set(null);
       return;
     }
@@ -280,7 +311,19 @@ export class ExcelManager implements OnInit {
     return source
       .map(item => this.normalizeExcelListItem(item))
       .filter((item): item is ExcelFileItem => item !== null)
-      .sort((a, b) => a.fileName.localeCompare(b.fileName));
+      .sort((a, b) => {
+        const versionA = this.extractVersionNumber(a.fileName);
+        const versionB = this.extractVersionNumber(b.fileName);
+        if (versionA !== versionB) {
+          return versionB - versionA;
+        }
+        return a.fileName.localeCompare(b.fileName);
+      });
+  }
+
+  private extractVersionNumber(fileName: string): number {
+    const match = fileName.match(/-v(\d+)\.xlsx$/i);
+    return match ? Number(match[1]) : 0;
   }
 
   private extractListSource(response: ExcelListResponse): Array<ExcelFileItem | string> {
@@ -331,6 +374,72 @@ export class ExcelManager implements OnInit {
     const endYearTwoDigits = String((startYear + 1) % 100).padStart(2, '0');
 
     return `${startYear}-${endYearTwoDigits}`;
+  }
+
+  private getExcelFileNameValidationError(fileName: string): string | null {
+    const normalizedFileName = fileName.trim();
+    if (!normalizedFileName) {
+      return 'Excel file name is required.';
+    }
+
+    if (!/\.xlsx$/i.test(normalizedFileName)) {
+      return 'Only .xlsx files are allowed. Expected format: CalendarD1-v0.xlsx';
+    }
+
+    const expectedDivision = this.inferExpectedDivision();
+    const divisionPattern = expectedDivision ? expectedDivision.slice(1) : '[12]';
+    const divisionRegex = new RegExp(`^CalendarD${divisionPattern}-v\\d+\\.xlsx$`, 'i');
+
+    if (!divisionRegex.test(normalizedFileName)) {
+      if (expectedDivision) {
+        return `Invalid file name for selected competition. Expected format: Calendar${expectedDivision}-v<number>.xlsx`;
+      }
+      return 'Invalid file name. Use CalendarD1-v<number>.xlsx or CalendarD2-v<number>.xlsx';
+    }
+
+    return null;
+  }
+
+  private inferExpectedDivision(): 'D1' | 'D2' | null {
+    const selectedCompetition = this.competitions().find(
+      competition => competition.id === this.selectedCompetitionId()
+    );
+    if (!selectedCompetition) {
+      return null;
+    }
+
+    const sources = [
+      selectedCompetition.id,
+      selectedCompetition.properties,
+      selectedCompetition.name
+    ];
+
+    for (const source of sources) {
+      const hasD1 = this.containsDivision(source, 'D1');
+      const hasD2 = this.containsDivision(source, 'D2');
+
+      if (hasD1 && !hasD2) {
+        return 'D1';
+      }
+      if (hasD2 && !hasD1) {
+        return 'D2';
+      }
+    }
+
+    return null;
+  }
+
+  private containsDivision(text: string, division: 'D1' | 'D2'): boolean {
+    const normalizedText = (text ?? '').toUpperCase();
+    if (division === 'D1') {
+      return /(^|[^A-Z0-9])D1([^A-Z0-9]|$)/.test(normalizedText) ||
+        /\bDIVISION\s*1\b/.test(normalizedText) ||
+        /\b1A\s*DIVISION\b/.test(normalizedText);
+    }
+
+    return /(^|[^A-Z0-9])D2([^A-Z0-9]|$)/.test(normalizedText) ||
+      /\bDIVISION\s*2\b/.test(normalizedText) ||
+      /\b2A\s*DIVISION\b/.test(normalizedText);
   }
 
   private downloadFile(blob: Blob, filename: string): void {
