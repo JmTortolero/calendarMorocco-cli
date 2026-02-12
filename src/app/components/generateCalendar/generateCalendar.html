@@ -1,62 +1,105 @@
 <div class="upload-container">
   <div class="form-group">
     <div class="config-header">
-      <label for="configSelect">{{ 'calendar.configLabel' | translate }}</label>
+      <label for="configSelect">Competition: (League)</label>
       <button
         type="button"
         (click)="refreshConfig()"
-        [disabled]="configLoading()"
+        [disabled]="competitionLoading()"
         class="refresh-config-btn"
-        title="Actualizar opciones de configuración">
-        @if (configLoading()) {
-          🔄
+        title="Refresh competitions">
+        @if (competitionLoading()) {
+          Refreshing...
         } @else {
-          ⟳
+          Refresh
         }
       </button>
     </div>
 
     <select
       id="configSelect"
-      [(ngModel)]="selectedConfig"
+      [ngModel]="selectedCompetitionId()"
+      (ngModelChange)="onCompetitionChange($event)"
       class="form-control"
-      [disabled]="configLoading() || configOptions().length === 0">
+      [disabled]="competitionLoading() || competitions().length === 0">
       <option value="">
-        @if (configLoading()) {
-          Cargando opciones...
-        } @else if (configOptions().length === 0) {
-          No hay opciones disponibles
+        @if (competitionLoading()) {
+          Loading competitions...
+        } @else if (competitions().length === 0) {
+          No options available
         } @else {
-          {{ 'calendar.selectConfig' | translate }}
+          Select a league
         }
       </option>
-      @for (config of configOptions(); track config.value) {
-        <option [value]="config.value">
-          {{ config.labelKey | translate }}
+      @for (competition of competitions(); track competition.id) {
+        <option [value]="competition.id">
+          {{ competition.name }}
         </option>
       }
     </select>
   </div>
 
   <div class="form-group">
-    <label for="excelFile">{{ 'calendar.excelLabel' | translate }}</label>
+    <label for="seasonInput">Season (example: 2025-26)</label>
     <input
-      id="excelFile"
-      type="file"
-      accept=".xlsx,.xls"
-      (change)="onFileChange($event, 'excel')"
-      class="form-control">
-    @if (!excelFile()) {
-      <small class="help-text">{{ 'calendar.noFileSelected' | translate }}</small>
+      id="seasonInput"
+      type="text"
+      [ngModel]="selectedSeason()"
+      (ngModelChange)="onSeasonChange($event)"
+      class="form-control"
+      placeholder="2025-26"
+      [disabled]="loading() || competitionLoading()">
+  </div>
+
+  <div class="form-group">
+    <label for="excelFromStorage">Excel File From Storage</label>
+    <select
+      id="excelFromStorage"
+      [ngModel]="selectedExcelFileName()"
+      (ngModelChange)="selectedExcelFileName.set($event)"
+      class="form-control"
+      [disabled]="excelFilesLoading() || !selectedCompetitionId() || !selectedSeason() || excelFiles().length === 0">
+      <option value="">
+        @if (excelFilesLoading()) {
+          Loading files...
+        } @else if (!selectedCompetitionId() || !selectedSeason()) {
+          Select competition and season first
+        } @else if (excelFiles().length === 0) {
+          No Excel files uploaded for this competition and season
+        } @else {
+          Select an Excel file
+        }
+      </option>
+      @for (file of excelFiles(); track file.fileName) {
+        <option [value]="file.fileName">
+          {{ file.fileName }}
+        </option>
+      }
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="lastRoundToAssign">Last Round To Assign</label>
+    <input
+      id="lastRoundToAssign"
+      type="number"
+      min="1"
+      step="1"
+      [ngModel]="lastRoundToAssign() ?? ''"
+      (ngModelChange)="onLastRoundToAssignChange($event)"
+      class="form-control"
+      [disabled]="loading() || competitionLoading()">
+    @if (lastRoundToAssign() === null) {
+      <small class="help-text">Set the round number to assign (integer greater than 0)</small>
     }
-    @if (excelFile()) {
-      <small class="file-selected">✓ {{ excelFile()?.name }}</small>
+    @if (lastRoundToAssign() !== null && !hasValidLastRoundToAssign()) {
+      <small class="warning-text">Use an integer greater than 0</small>
     }
   </div>
 
   <button
     (click)="generateCalendar()"
-    [disabled]="loading() || configLoading() || !selectedConfig() || !excelFile() || configOptions().length === 0"
+    [disabled]="!canGenerate()"
     class="generate-button">
     @if (loading()) {
       {{ 'calendar.loading' | translate }}
@@ -65,16 +108,25 @@
     }
   </button>
 
-  <!-- Información adicional sobre el estado -->
   <div class="generation-info">
-    @if (configLoading()) {
+    @if (competitionLoading()) {
       <small class="info-text">
-        🔄 Cargando opciones de configuración...
+        Loading competitions...
       </small>
     }
-    @if (!configLoading() && configOptions().length === 0) {
+    @if (excelFilesLoading()) {
+      <small class="info-text">
+        Loading Excel files...
+      </small>
+    }
+    @if (!competitionLoading() && competitions().length === 0) {
       <small class="warning-text">
-        ⚠️ No se pueden generar calendarios sin opciones de configuración válidas
+        Cannot generate calendars without valid competitions
+      </small>
+    }
+    @if (!excelFilesLoading() && selectedCompetitionId() && selectedSeason() && excelFiles().length === 0) {
+      <small class="warning-text">
+        No Excel files available for this competition and season
       </small>
     }
   </div>

@@ -9,7 +9,7 @@
     "clickToCheck": "Click to check backend status"
   },
   "calendar": {
-    "title": "CALENDAR GENERATION",
+    "title": "Moroccan League Calendar Generator",
     "subtitle": "Morocco Football Federation",
     "excelLabel": "Excel File:",
     "configLabel": "Competition: (League)",

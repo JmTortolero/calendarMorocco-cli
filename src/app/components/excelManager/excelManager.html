@@ -1,0 +1,124 @@
+<div class="excel-manager-container">
+  <h2>Excel Manager</h2>
+
+  <div class="form-group">
+    <div class="config-header">
+      <label for="competitionSelect">Competition</label>
+      <button
+        type="button"
+        (click)="refreshCompetitions()"
+        [disabled]="competitionLoading()"
+        class="refresh-btn">
+        @if (competitionLoading()) {
+          Refreshing...
+        } @else {
+          Refresh
+        }
+      </button>
+    </div>
+
+    <select
+      id="competitionSelect"
+      [ngModel]="selectedCompetitionId()"
+      (ngModelChange)="onCompetitionChange($event)"
+      class="form-control"
+      [disabled]="competitionLoading() || competitions().length === 0">
+      <option value="">
+        @if (competitionLoading()) {
+          Loading competitions...
+        } @else if (competitions().length === 0) {
+          No competitions available
+        } @else {
+          Select a competition
+        }
+      </option>
+      @for (competition of competitions(); track competition.id) {
+        <option [value]="competition.id">
+          {{ competition.name }}
+        </option>
+      }
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="seasonInput">Season (example: 2025-26)</label>
+    <input
+      id="seasonInput"
+      type="text"
+      class="form-control"
+      [ngModel]="selectedSeason()"
+      (ngModelChange)="onSeasonChange($event)"
+      placeholder="2025-26"
+      [disabled]="competitionLoading()">
+  </div>
+
+  <div class="list-section">
+    <h3>Available Excel Files</h3>
+
+    @if (excelFilesLoading()) {
+      <small class="info-text">Loading files...</small>
+    } @else if (!selectedCompetitionId() || !selectedSeason()) {
+      <small class="info-text">Select competition and season to load files.</small>
+    } @else if (excelFiles().length === 0) {
+      <small class="warning-text">No Excel files found for this competition and season.</small>
+    } @else {
+      <div class="file-list">
+        @for (file of excelFiles(); track file.fileName) {
+          <div class="file-row">
+            <div class="file-meta">
+              <strong>{{ file.fileName }}</strong>
+              <span>{{ formatBytes(file.size) }}</span>
+              <span>{{ formatDate(file.lastModified) }}</span>
+            </div>
+            <button
+              type="button"
+              class="row-download-btn"
+              (click)="downloadExcel(file.fileName)"
+              [disabled]="downloadingFileName() === file.fileName || uploading()">
+              @if (downloadingFileName() === file.fileName) {
+                Downloading...
+              } @else {
+                Download
+              }
+            </button>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <div class="upload-section">
+    <h3>Upload Excel File</h3>
+
+    <input
+      id="excelUpload"
+      type="file"
+      accept=".xlsx,.xls"
+      (change)="onExcelFileChange($event)"
+      class="form-control"
+      [disabled]="uploading()">
+
+    @if (selectedExcelFile()) {
+      <small class="file-selected">Selected: {{ selectedExcelFile()?.name }}</small>
+    }
+
+    <button
+      type="button"
+      class="action-button upload"
+      (click)="uploadExcel()"
+      [disabled]="!canUpload()">
+      @if (uploading()) {
+        Uploading...
+      } @else {
+        Upload
+      }
+    </button>
+  </div>
+
+  @if (error()) {
+    <div class="error">{{ error() }}</div>
+  }
+  @if (success()) {
+    <div class="success">{{ success() }}</div>
+  }
+</div>

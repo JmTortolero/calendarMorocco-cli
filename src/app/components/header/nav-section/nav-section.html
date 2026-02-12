@@ -1,10 +1,4 @@
-<div class="nav-section">
-  <div class="nav-links">
-    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
-      {{ 'nav.generateCalendar' | translate }}
-    </a>
-    <a routerLink="/properties" routerLinkActive="active">
-      {{ 'propertiesManager.title' | translate }}
-    </a>
-  </div>
-</div>
+<nav class="nav-section">
+  <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Generate Calendar</a>
+  <a routerLink="/excel-manager" routerLinkActive="active">Excel Manager</a>
+</nav>

@@ -7,14 +7,14 @@ export const routes: Routes = [
     title: 'Calendar Generation - Morocco Football Federation'
   },
   {
-    path: 'properties',
-    loadComponent: () => import('./components/propertiesManager/propertiesManager').then(m => m.PropertiesManager),
-    title: 'Properties Manager - Morocco Football Federation'
+    path: 'excel-manager',
+    loadComponent: () => import('./components/excelManager/excelManager').then(m => m.ExcelManager),
+    title: 'Excel Manager - Morocco Football Federation'
   },
   {
-    path: 'properties-editor',
-    loadComponent: () => import('./components/propertiesEditor/propertiesEditor').then(m => m.PropertiesEditor),
-    title: 'Properties Editor - Morocco Football Federation'
+    path: 'properties',
+    redirectTo: 'excel-manager',
+    pathMatch: 'full'
   },
   {
     path: '**',

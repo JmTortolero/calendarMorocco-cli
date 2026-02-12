@@ -1,10 +1,9 @@
-import { Component, inject, OnInit, DestroyRef, signal, computed, effect } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
-import { TranslatePipe } from '../../core/pipes/translate.pipe';
-import { CompetitionCatalog, Translation } from '../../core/services';
+import { CompetitionCatalog } from '../../core/services';
 import { CompetitionOption } from '../../core/services/competition';
 
 interface ExcelFileItem {
@@ -19,60 +18,36 @@ type ExcelListResponse =
   | { excels?: ExcelFileItem[] | string[]; files?: ExcelFileItem[] | string[]; items?: ExcelFileItem[] | string[] };
 
 @Component({
-  selector: 'app-generate-calendar',
+  selector: 'app-excel-manager',
   standalone: true,
-  imports: [FormsModule, TranslatePipe],
-  templateUrl: './generateCalendar.html',
-  styleUrl: './generateCalendar.css'
+  imports: [FormsModule],
+  templateUrl: './excelManager.html',
+  styleUrl: './excelManager.css'
 })
-export class GenerateCalendar implements OnInit {
-  loading = signal(false);
-  error = signal<string | null>(null);
-  success = signal<string | null>(null);
-
+export class ExcelManager implements OnInit {
   competitionLoading = signal(false);
   competitions = signal<CompetitionOption[]>([]);
   selectedCompetitionId = signal('');
   selectedSeason = signal(this.getDefaultSeason());
+
   excelFilesLoading = signal(false);
   excelFiles = signal<ExcelFileItem[]>([]);
-  selectedExcelFileName = signal('');
 
-  lastRoundToAssign = signal<number | null>(null);
+  selectedExcelFile = signal<File | null>(null);
 
-  hasCompetitions = computed(() => this.competitions().length > 0);
-  hasExcelFiles = computed(() => this.excelFiles().length > 0);
-  hasValidLastRoundToAssign = computed(() => {
-    const value = this.lastRoundToAssign();
-    return value !== null && Number.isInteger(value) && value > 0;
-  });
-  canGenerate = computed(() =>
-    !this.loading() &&
-    !this.competitionLoading() &&
+  uploading = signal(false);
+  downloadingFileName = signal<string | null>(null);
+  error = signal<string | null>(null);
+  success = signal<string | null>(null);
+
+  canUpload = computed(() =>
+    !this.uploading() &&
     !this.excelFilesLoading() &&
     this.selectedCompetitionId().length > 0 &&
     this.selectedSeason().length > 0 &&
-    this.selectedExcelFileName().length > 0 &&
-    this.hasCompetitions() &&
-    this.hasExcelFiles() &&
-    this.hasValidLastRoundToAssign()
+    this.selectedExcelFile() !== null
   );
 
-  private readonly stateLogger = effect(() => {
-    console.log('GenerateCalendar state', {
-      selectedCompetitionId: this.selectedCompetitionId(),
-      selectedSeason: this.selectedSeason(),
-      selectedExcelFileName: this.selectedExcelFileName(),
-      competitionsCount: this.competitions().length,
-      excelFilesCount: this.excelFiles().length,
-      lastRoundToAssign: this.lastRoundToAssign(),
-      lastRoundValid: this.hasValidLastRoundToAssign(),
-      canGenerate: this.canGenerate(),
-      loading: this.loading()
-    });
-  });
-
-  private readonly translationService = inject(Translation);
   private readonly http = inject(HttpClient);
   private readonly competitionService = inject(CompetitionCatalog);
   private readonly destroyRef = inject(DestroyRef);
@@ -94,7 +69,6 @@ export class GenerateCalendar implements OnInit {
         ) {
           this.selectedCompetitionId.set('');
           this.excelFiles.set([]);
-          this.selectedExcelFileName.set('');
         }
 
         if (this.selectedCompetitionId() && this.selectedSeason()) {
@@ -117,7 +91,7 @@ export class GenerateCalendar implements OnInit {
       });
   }
 
-  async refreshConfig(): Promise<void> {
+  async refreshCompetitions(): Promise<void> {
     try {
       await this.competitionService.refresh();
       this.error.set(null);
@@ -131,14 +105,13 @@ export class GenerateCalendar implements OnInit {
         this.success.set(null);
       }, 60000);
     } catch {
-      // Error message is already pushed through competitionService.error$
+      // Error already provided by competitionService.error$
     }
   }
 
   onCompetitionChange(competitionId: string): void {
     this.selectedCompetitionId.set(competitionId);
     this.excelFiles.set([]);
-    this.selectedExcelFileName.set('');
 
     if (competitionId && this.selectedSeason()) {
       this.loadExcelFiles();
@@ -148,17 +121,24 @@ export class GenerateCalendar implements OnInit {
   onSeasonChange(season: string): void {
     this.selectedSeason.set(season);
     this.excelFiles.set([]);
-    this.selectedExcelFileName.set('');
 
     if (season && this.selectedCompetitionId()) {
       this.loadExcelFiles();
     }
   }
 
+  onExcelFileChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.selectedExcelFile.set(input.files[0]);
+    } else {
+      this.selectedExcelFile.set(null);
+    }
+  }
+
   async loadExcelFiles(): Promise<void> {
     if (!this.selectedCompetitionId() || !this.selectedSeason()) {
       this.excelFiles.set([]);
-      this.selectedExcelFileName.set('');
       return;
     }
 
@@ -168,20 +148,11 @@ export class GenerateCalendar implements OnInit {
     try {
       const url = `/api/calendar/competitions/${encodeURIComponent(this.selectedCompetitionId())}/seasons/${encodeURIComponent(this.selectedSeason())}/excels`;
       const response = await firstValueFrom(this.http.get<ExcelListResponse>(url));
-      const files = this.normalizeExcelListResponse(response);
-
-      this.excelFiles.set(files);
-
-      if (
-        this.selectedExcelFileName() &&
-        !files.some(file => file.fileName === this.selectedExcelFileName())
-      ) {
-        this.selectedExcelFileName.set('');
-      }
+      const normalized = this.normalizeExcelListResponse(response);
+      this.excelFiles.set(normalized);
     } catch (e: any) {
       if (e?.status === 404) {
         this.excelFiles.set([]);
-        this.selectedExcelFileName.set('');
       } else {
         this.error.set(e?.error?.message || e?.message || 'Error loading Excel files.');
       }
@@ -190,94 +161,73 @@ export class GenerateCalendar implements OnInit {
     }
   }
 
-  onLastRoundToAssignChange(value: string | number | null): void {
-    if (value === null || value === '') {
-      this.lastRoundToAssign.set(null);
-      return;
-    }
-
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) {
-      this.lastRoundToAssign.set(parsed);
-      return;
-    }
-
-    this.lastRoundToAssign.set(null);
-  }
-
-  async generateCalendar(): Promise<void> {
-    if (!this.selectedCompetitionId() || !this.selectedSeason() || !this.selectedExcelFileName()) {
-      this.error.set('Please select competition, season and Excel file.');
+  async uploadExcel(): Promise<void> {
+    if (!this.selectedCompetitionId()) {
+      this.error.set('Please select a competition first.');
       this.success.set(null);
       return;
     }
 
-    const lastRoundToAssign = this.lastRoundToAssign();
-    if (lastRoundToAssign === null || !Number.isInteger(lastRoundToAssign) || lastRoundToAssign <= 0) {
-      this.error.set('Please set a valid Last Round To Assign (> 0).');
+    if (!this.selectedSeason()) {
+      this.error.set('Please set a season first.');
       this.success.set(null);
       return;
     }
 
-    if (
-      this.competitions().length > 0 &&
-      !this.competitionService.hasCompetitionId(this.selectedCompetitionId())
-    ) {
-      this.error.set(`Selected competition is not valid: ${this.selectedCompetitionId()}`);
+    const excelFile = this.selectedExcelFile();
+    if (!excelFile) {
+      this.error.set('Please choose an Excel file to upload.');
       this.success.set(null);
       return;
     }
 
-    if (
-      this.excelFiles().length > 0 &&
-      !this.excelFiles().some(file => file.fileName === this.selectedExcelFileName())
-    ) {
-      this.error.set(`Selected Excel file is not valid: ${this.selectedExcelFileName()}`);
-      this.success.set(null);
-      return;
-    }
-
-    this.loading.set(true);
+    this.uploading.set(true);
     this.error.set(null);
     this.success.set(null);
 
     try {
+      const url = `/api/calendar/competitions/${encodeURIComponent(this.selectedCompetitionId())}/seasons/${encodeURIComponent(this.selectedSeason())}/excels`;
       const formData = new FormData();
-      formData.append('competitionId', this.selectedCompetitionId());
-      formData.append('season', this.selectedSeason());
-      formData.append('excelFileName', this.selectedExcelFileName());
-      formData.append('lastRoundToAssign', String(lastRoundToAssign));
+      formData.append('excel', excelFile);
 
-      const apiUrl = '/api/calendar/generate';
+      await firstValueFrom(this.http.post(url, formData, { observe: 'response' }));
 
-      try {
-        await firstValueFrom(this.http.get('/actuator/health'));
-      } catch (healthError: any) {
-        if (healthError.status !== 0) {
-          throw new Error(`Backend not available (${healthError.status}): ${healthError.message}`);
-        }
-      }
+      this.success.set(`Excel '${excelFile.name}' uploaded successfully.`);
+      this.selectedExcelFile.set(null);
+      await this.loadExcelFiles();
+    } catch (e: any) {
+      this.error.set(e?.error?.message || e?.message || 'Error uploading Excel file.');
+      this.success.set(null);
+    } finally {
+      this.uploading.set(false);
+    }
+  }
 
-      const response = await firstValueFrom(this.http.post(apiUrl, formData, {
+  async downloadExcel(fileName: string): Promise<void> {
+    if (!this.selectedCompetitionId() || !this.selectedSeason()) {
+      this.error.set('Please select competition and season first.');
+      this.success.set(null);
+      return;
+    }
+
+    this.downloadingFileName.set(fileName);
+    this.error.set(null);
+    this.success.set(null);
+
+    try {
+      const url = `/api/calendar/competitions/${encodeURIComponent(this.selectedCompetitionId())}/seasons/${encodeURIComponent(this.selectedSeason())}/excels/${encodeURIComponent(fileName)}`;
+
+      const response = await firstValueFrom(this.http.get(url, {
         responseType: 'blob',
-        observe: 'response',
-        headers: {
-          Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/octet-stream,*/*'
-        }
+        observe: 'response'
       }));
 
-      if (!response || response.status !== 200) {
-        throw new Error(`HTTP ${response?.status}: download failed`);
-      }
-
-      const blob = response.body;
-      if (!blob || blob.size === 0) {
-        throw new Error('Empty file received from backend');
+      if (!response || response.status !== 200 || !response.body || response.body.size === 0) {
+        throw new Error('Invalid file response from backend.');
       }
 
       const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = 'calendario.xlsx';
-
+      let filename = fileName;
       if (contentDisposition) {
         const matches = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
         if (matches && matches[1]) {
@@ -285,38 +235,43 @@ export class GenerateCalendar implements OnInit {
         }
       }
 
-      this.downloadFile(blob, filename);
-      this.success.set(this.translationService.translate('calendar.success'));
+      this.downloadFile(response.body, filename);
+      this.success.set(`Excel '${filename}' downloaded successfully.`);
     } catch (e: any) {
-      this.error.set(e.message || this.translationService.translate('calendar.errorUnknown'));
+      this.error.set(e?.error?.message || e?.message || 'Error downloading Excel file.');
       this.success.set(null);
     } finally {
-      this.loading.set(false);
+      this.downloadingFileName.set(null);
     }
   }
 
-  private downloadFile(blob: Blob, filename: string): void {
-    try {
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      link.style.display = 'none';
-
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-      }, 100);
-    } catch {
-      throw new Error('Could not start file download');
+  formatBytes(size: number | null): string {
+    if (size === null || Number.isNaN(size)) {
+      return '-';
     }
+
+    if (size < 1024) {
+      return `${size} B`;
+    }
+
+    if (size < 1024 * 1024) {
+      return `${(size / 1024).toFixed(1)} KB`;
+    }
+
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   }
 
-  get currentTranslationService() {
-    return this.translationService;
+  formatDate(value: string | null): string {
+    if (!value) {
+      return '-';
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+
+    return date.toLocaleString();
   }
 
   private normalizeExcelListResponse(response: ExcelListResponse): ExcelFileItem[] {
@@ -376,5 +331,21 @@ export class GenerateCalendar implements OnInit {
     const endYearTwoDigits = String((startYear + 1) % 100).padStart(2, '0');
 
     return `${startYear}-${endYearTwoDigits}`;
+  }
+
+  private downloadFile(blob: Blob, filename: string): void {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(() => {
+      window.URL.revokeObjectURL(url);
+    }, 100);
   }
 }
