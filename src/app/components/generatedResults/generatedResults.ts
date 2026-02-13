@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { CompetitionCatalog } from '../../core/services';
+import { AppState } from '../../core/services/app-state';
 import { CompetitionOption } from '../../core/services/competition';
 
 type ArtifactType = 'XLSX' | 'ZIP';
@@ -100,8 +101,16 @@ export class GeneratedResults implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly competitionService = inject(CompetitionCatalog);
   private readonly destroyRef = inject(DestroyRef);
+  readonly appState = inject(AppState);
 
   ngOnInit(): void {
+    // Sync from shared state
+    if (this.appState.selectedCompetitionId()) {
+      this.selectedCompetitionId.set(this.appState.selectedCompetitionId());
+    }
+    if (this.appState.selectedSeason()) {
+      this.selectedSeason.set(this.appState.selectedSeason());
+    }
     this.subscribeToCompetitionService();
   }
 
@@ -160,6 +169,7 @@ export class GeneratedResults implements OnInit {
 
   onCompetitionChange(competitionId: string): void {
     this.selectedCompetitionId.set(competitionId);
+    this.appState.setCompetition(competitionId);
     this.generatedFiles.set([]);
 
     if (competitionId && this.selectedSeason()) {
@@ -169,6 +179,7 @@ export class GeneratedResults implements OnInit {
 
   onSeasonChange(season: string): void {
     this.selectedSeason.set(season);
+    this.appState.setSeason(season);
     this.generatedFiles.set([]);
 
     if (season && this.selectedCompetitionId()) {

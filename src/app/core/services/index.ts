@@ -1,4 +1,5 @@
 // Barrel export para servicios core
+export * from './app-state';
 export * from './competition';
 export * from './config';
 export * from './translation';

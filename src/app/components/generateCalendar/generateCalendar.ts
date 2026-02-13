@@ -4,7 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
-import { CompetitionCatalog, Translation } from '../../core/services';
+import { AppState, CompetitionCatalog, Translation } from '../../core/services';
 import { CompetitionOption } from '../../core/services/competition';
 
 interface ExcelFileItem {
@@ -95,8 +95,16 @@ export class GenerateCalendar implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly competitionService = inject(CompetitionCatalog);
   private readonly destroyRef = inject(DestroyRef);
+  readonly appState = inject(AppState);
 
   ngOnInit(): void {
+    // Sync from shared state
+    if (this.appState.selectedCompetitionId()) {
+      this.selectedCompetitionId.set(this.appState.selectedCompetitionId());
+    }
+    if (this.appState.selectedSeason()) {
+      this.selectedSeason.set(this.appState.selectedSeason());
+    }
     this.subscribeToCompetitionService();
   }
 
@@ -157,6 +165,7 @@ export class GenerateCalendar implements OnInit {
   onCompetitionChange(competitionId: string): void {
     const competitionChanged = competitionId !== this.selectedCompetitionId();
     this.selectedCompetitionId.set(competitionId);
+    this.appState.setCompetition(competitionId);
     this.excelFiles.set([]);
     this.selectedExcelFileName.set('');
     this.lastRoundToAssign.set(null);
@@ -172,6 +181,7 @@ export class GenerateCalendar implements OnInit {
   onSeasonChange(season: string): void {
     const seasonChanged = season !== this.selectedSeason();
     this.selectedSeason.set(season);
+    this.appState.setSeason(season);
     this.excelFiles.set([]);
     this.selectedExcelFileName.set('');
     if (seasonChanged) {

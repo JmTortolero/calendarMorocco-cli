@@ -1,0 +1,114 @@
+# =============================================================================
+# Kubernetes manifests para el FRONTEND Angular
+# Deploy: kubectl apply -f k8s/frontend.yaml
+# =============================================================================
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calendar-frontend
+  labels:
+    app: calendar-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: calendar-frontend
+  template:
+    metadata:
+      labels:
+        app: calendar-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: calendar-frontend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 30
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: calendar-frontend
+  labels:
+    app: calendar-frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: calendar-frontend
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http
+
+---
+# Ingress para servir FRONT + BACK bajo el mismo dominio calendar.local
+# El frontend nginx ya tiene proxy_pass a calendar-backend:8080 para /api/
+# PERO si prefieres que Ingress haga el routing (más limpio), usa este Ingress:
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: calendar-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    # Exponer headers del backend al navegador
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_pass_header X-Generation-Id;
+      proxy_pass_header Content-Disposition;
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: calendar.local
+      http:
+        paths:
+          # Backend API
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: calendar-backend
+                port:
+                  number: 8080
+          # Backend Actuator
+          - path: /actuator
+            pathType: Prefix
+            backend:
+              service:
+                name: calendar-backend
+                port:
+                  number: 8080
+          # Frontend (todo lo demás)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: calendar-frontend
+                port:
+                  number: 80

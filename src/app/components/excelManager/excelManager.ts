@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { CompetitionCatalog } from '../../core/services';
+import { AppState } from '../../core/services/app-state';
 import { CompetitionOption } from '../../core/services/competition';
 
 interface ExcelFileItem {
@@ -68,8 +69,16 @@ export class ExcelManager implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly competitionService = inject(CompetitionCatalog);
   private readonly destroyRef = inject(DestroyRef);
+  readonly appState = inject(AppState);
 
   ngOnInit(): void {
+    // Sync from shared state
+    if (this.appState.selectedCompetitionId()) {
+      this.selectedCompetitionId.set(this.appState.selectedCompetitionId());
+    }
+    if (this.appState.selectedSeason()) {
+      this.selectedSeason.set(this.appState.selectedSeason());
+    }
     this.subscribeToCompetitionService();
   }
 
@@ -128,6 +137,7 @@ export class ExcelManager implements OnInit {
 
   onCompetitionChange(competitionId: string): void {
     this.selectedCompetitionId.set(competitionId);
+    this.appState.setCompetition(competitionId);
     this.excelFiles.set([]);
     this.selectedExcelFile.set(null);
     this.showFileNameHelp.set(false);
@@ -139,6 +149,7 @@ export class ExcelManager implements OnInit {
 
   onSeasonChange(season: string): void {
     this.selectedSeason.set(season);
+    this.appState.setSeason(season);
     this.excelFiles.set([]);
 
     if (season && this.selectedCompetitionId()) {

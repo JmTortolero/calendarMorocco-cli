@@ -1,17 +1,17 @@
 // Configuración de entorno de desarrollo
+// En dev, el proxy de Angular (proxy.k8s.json o proxy.local.json) redirige /api/* al backend.
+// Por eso baseUrl es '' → todas las peticiones son relativas.
 export const environment = {
   production: false,
-  // Configuración del backend
   backend: {
     protocol: 'http',
     host: 'localhost',
     port: 8080,
-    // URL completa se construye dinámicamente
-    get baseUrl() {
-      return `${this.protocol}://${this.host}:${this.port}`;
+    // En dev: URLs relativas (el proxy redirige)
+    get baseUrl(): string {
+      return '';
     }
   },
-  // APIs endpoints
   api: {
     config: '/api/config',
     calendar: '/api/calendar',
