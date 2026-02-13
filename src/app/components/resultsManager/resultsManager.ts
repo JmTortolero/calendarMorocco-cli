@@ -40,7 +40,7 @@ type ResultListResponse =
   standalone: true,
   imports: [FormsModule],
   templateUrl: './resultsManager.html',
-  styleUrl: './resultsManager.css'
+  styleUrls: ['./resultsManager.css']
 })
 export class ResultsManager implements OnInit {
   competitionLoading = signal(false);

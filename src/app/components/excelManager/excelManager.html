@@ -7,9 +7,9 @@
       <button
         type="button"
         (click)="refreshCompetitions()"
-        [disabled]="competitionLoading()"
+        [disabled]="competitionLoading() || seasonLoading()"
         class="refresh-btn">
-        @if (competitionLoading()) {
+        @if (competitionLoading() || seasonLoading()) {
           Refreshing...
         } @else {
           Refresh
@@ -22,6 +22,8 @@
       [ngModel]="selectedCompetitionId()"
       (ngModelChange)="onCompetitionChange($event)"
       class="form-control"
+      title="Select competition"
+      aria-label="Select competition"
       [disabled]="competitionLoading() || competitions().length === 0">
       <option value="">
         @if (competitionLoading()) {
@@ -41,15 +43,30 @@
   </div>
 
   <div class="form-group">
-    <label for="seasonInput">Season (example: 2025-26)</label>
-    <input
-      id="seasonInput"
-      type="text"
-      class="form-control"
+    <label for="seasonSelect">Season</label>
+    <select
+      id="seasonSelect"
       [ngModel]="selectedSeason()"
       (ngModelChange)="onSeasonChange($event)"
-      placeholder="2025-26"
-      [disabled]="competitionLoading()">
+      class="form-control"
+      title="Select season"
+      aria-label="Select season"
+      [disabled]="competitionLoading() || seasonLoading() || seasons().length === 0">
+      <option value="">
+        @if (seasonLoading()) {
+          Loading seasons...
+        } @else if (seasons().length === 0) {
+          No seasons available
+        } @else {
+          Select a season
+        }
+      </option>
+      @for (season of seasons(); track season.id) {
+        <option [value]="season.id">
+          {{ season.label }}
+        </option>
+      }
+    </select>
   </div>
 
   <div class="list-section">
@@ -107,12 +124,15 @@
       </div>
     }
 
+    <label for="excelUpload">Excel file to upload (.xlsx)</label>
     <input
       id="excelUpload"
       type="file"
       accept=".xlsx"
       (change)="onExcelFileChange($event)"
       class="form-control"
+      title="Choose an Excel file to upload"
+      aria-label="Choose an Excel file to upload"
       [disabled]="uploading()">
 
     @if (selectedExcelFile()) {
@@ -122,17 +142,35 @@
       <small class="warning-text">{{ excelFileNameValidationError() }}</small>
     }
 
-    <button
-      type="button"
-      class="action-button upload"
-      (click)="uploadExcel()"
-      [disabled]="!canUpload()">
-      @if (uploading()) {
-        Uploading...
-      } @else {
-        Upload
-      }
-    </button>
+    <div class="upload-actions">
+      <button
+        type="button"
+        class="action-button upload"
+        (click)="uploadExcel()"
+        [disabled]="!canUpload()">
+        @if (uploading()) {
+          Uploading...
+        } @else {
+          Upload
+        }
+      </button>
+    </div>
+    @if (showInitialDownloadSection()) {
+      <div class="initial-download-section">
+        <button
+          type="button"
+          class="action-button initial-download"
+          (click)="downloadInitialExcel()"
+          [disabled]="!canDownloadInitialExcel()">
+          @if (downloadingFileName() === initialExcelFileName()) {
+            Downloading Initial Excel...
+          } @else {
+            Download Initial Excel
+          }
+        </button>
+        <small class="info-text">Initial template: {{ initialExcelFileName() }}</small>
+      </div>
+    }
   </div>
 
   @if (error()) {

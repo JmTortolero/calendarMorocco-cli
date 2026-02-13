@@ -1,2 +1,13 @@
 <app-header></app-header>
-<router-outlet></router-outlet>
+
+@if (startupChecking()) {
+  <main class="app-status-container">
+    <div class="app-status-card app-status-loading">Checking system status...</div>
+  </main>
+} @else if (backendUnavailable()) {
+  <main class="app-status-container">
+    <div class="app-status-card app-status-error">The system is down.</div>
+  </main>
+} @else {
+  <router-outlet></router-outlet>
+}

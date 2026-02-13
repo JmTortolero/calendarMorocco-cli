@@ -3,9 +3,10 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
-import { CompetitionCatalog } from '../../core/services';
+import { CompetitionCatalog, SeasonCatalog } from '../../core/services';
 import { AppState } from '../../core/services/app-state';
 import { CompetitionOption } from '../../core/services/competition';
+import { SeasonOption } from '../../core/services/season';
 
 interface ExcelFileItem {
   fileName: string;
@@ -23,11 +24,13 @@ type ExcelListResponse =
   standalone: true,
   imports: [FormsModule],
   templateUrl: './excelManager.html',
-  styleUrl: './excelManager.css'
+  styleUrls: ['./excelManager.css']
 })
 export class ExcelManager implements OnInit {
   competitionLoading = signal(false);
   competitions = signal<CompetitionOption[]>([]);
+  seasonLoading = signal(false);
+  seasons = signal<SeasonOption[]>([]);
   selectedCompetitionId = signal('');
   selectedSeason = signal(this.getDefaultSeason());
 
@@ -56,18 +59,54 @@ export class ExcelManager implements OnInit {
     }
     return 'CalendarD1-v<number>.xlsx or CalendarD2-v<number>.xlsx';
   });
+  initialExcelFileName = computed(() => {
+    const expectedDivision = this.inferExpectedDivision();
+    return expectedDivision ? `Calendar${expectedDivision}-initial.xlsx` : '';
+  });
 
   canUpload = computed(() =>
     !this.uploading() &&
     !this.excelFilesLoading() &&
+    !this.seasonLoading() &&
     this.selectedCompetitionId().length > 0 &&
     this.selectedSeason().length > 0 &&
     this.selectedExcelFile() !== null &&
     this.excelFileNameValidationError() === null
   );
+  hasInitialVersion = computed(() => {
+    const files = this.excelFiles();
+    if (files.length === 0) {
+      return false;
+    }
+
+    const expectedDivision = this.inferExpectedDivision();
+    const initialVersionRegex = expectedDivision
+      ? new RegExp(`^Calendar${expectedDivision}-v(?:0|1)\\.xlsx$`, 'i')
+      : /^CalendarD[12]-v(?:0|1)\.xlsx$/i;
+
+    return files.some(file => initialVersionRegex.test(file.fileName.trim()));
+  });
+  showInitialDownloadSection = computed(() =>
+    !this.excelFilesLoading() &&
+    this.selectedCompetitionId().length > 0 &&
+    this.selectedSeason().length > 0 &&
+    !this.hasInitialVersion()
+  );
+  canDownloadInitialExcel = computed(() =>
+    !this.competitionLoading() &&
+    !this.seasonLoading() &&
+    !this.uploading() &&
+    !this.excelFilesLoading() &&
+    this.selectedCompetitionId().length > 0 &&
+    this.selectedSeason().length > 0 &&
+    this.initialExcelFileName().length > 0 &&
+    !this.hasInitialVersion() &&
+    this.downloadingFileName() === null
+  );
 
   private readonly http = inject(HttpClient);
   private readonly competitionService = inject(CompetitionCatalog);
+  private readonly seasonService = inject(SeasonCatalog);
   private readonly destroyRef = inject(DestroyRef);
   readonly appState = inject(AppState);
 
@@ -80,6 +119,7 @@ export class ExcelManager implements OnInit {
       this.selectedSeason.set(this.appState.selectedSeason());
     }
     this.subscribeToCompetitionService();
+    this.subscribeToSeasonService();
   }
 
   private subscribeToCompetitionService(): void {
@@ -117,11 +157,37 @@ export class ExcelManager implements OnInit {
       });
   }
 
+  private subscribeToSeasonService(): void {
+    this.seasonService.seasons$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(seasons => {
+        this.seasons.set(seasons.filter(season => season.enabled));
+        this.ensureValidSelectedSeason();
+      });
+
+    this.seasonService.loading$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(loading => {
+        this.seasonLoading.set(loading);
+      });
+
+    this.seasonService.error$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(serviceError => {
+        if (serviceError) {
+          this.error.set(serviceError);
+        }
+      });
+  }
+
   async refreshCompetitions(): Promise<void> {
     try {
-      await this.competitionService.refresh();
+      await Promise.all([
+        this.competitionService.refresh(),
+        this.seasonService.refresh()
+      ]);
       this.error.set(null);
-      this.success.set('Competitions updated successfully');
+      this.success.set('Competitions and seasons updated successfully');
 
       if (this.selectedCompetitionId() && this.selectedSeason()) {
         await this.loadExcelFiles();
@@ -243,6 +309,23 @@ export class ExcelManager implements OnInit {
     } finally {
       this.uploading.set(false);
     }
+  }
+
+  async downloadInitialExcel(): Promise<void> {
+    if (!this.selectedCompetitionId() || !this.selectedSeason()) {
+      this.error.set('Please select competition and season first.');
+      this.success.set(null);
+      return;
+    }
+
+    const initialFileName = this.initialExcelFileName();
+    if (!initialFileName) {
+      this.error.set('Cannot infer D1/D2 for selected competition.');
+      this.success.set(null);
+      return;
+    }
+
+    await this.downloadExcel(initialFileName);
   }
 
   async downloadExcel(fileName: string): Promise<void> {
@@ -385,6 +468,30 @@ export class ExcelManager implements OnInit {
     const endYearTwoDigits = String((startYear + 1) % 100).padStart(2, '0');
 
     return `${startYear}-${endYearTwoDigits}`;
+  }
+
+  private ensureValidSelectedSeason(): void {
+    const seasons = this.seasons();
+    if (seasons.length === 0) {
+      return;
+    }
+
+    const currentSelectedSeason = this.selectedSeason();
+    const currentSeasonIsValid = seasons.some(season => season.id === currentSelectedSeason);
+    if (currentSeasonIsValid) {
+      if (this.selectedCompetitionId() && this.selectedSeason()) {
+        this.loadExcelFiles();
+      }
+      return;
+    }
+
+    const preferredSeason = this.seasonService.getPreferredSeason(currentSelectedSeason) || this.getDefaultSeason();
+    this.selectedSeason.set(preferredSeason);
+    this.appState.setSeason(preferredSeason);
+
+    if (this.selectedCompetitionId() && preferredSeason) {
+      this.loadExcelFiles();
+    }
   }
 
   private getExcelFileNameValidationError(fileName: string): string | null {

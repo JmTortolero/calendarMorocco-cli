@@ -7,7 +7,7 @@ import { TranslatePipe } from '../../core/pipes/translate.pipe';
   standalone: true,
   imports: [CommonModule, TranslatePipe],
   templateUrl: './propertiesEditor.html',
-  styleUrl: './propertiesEditor.css'
+  styleUrls: ['./propertiesEditor.css']
 })
 export class PropertiesEditor {
   // Este es un componente placeholder para la futura funcionalidad de edición de properties

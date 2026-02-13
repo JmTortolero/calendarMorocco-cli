@@ -1,11 +1,13 @@
+import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
-import { CompetitionCatalog } from '../../core/services';
+import { CompetitionCatalog, SeasonCatalog } from '../../core/services';
 import { AppState } from '../../core/services/app-state';
 import { CompetitionOption } from '../../core/services/competition';
+import { SeasonOption } from '../../core/services/season';
 
 type ArtifactType = 'XLSX' | 'ZIP';
 
@@ -51,13 +53,16 @@ interface VersionGroup {
 @Component({
   selector: 'app-generated-results',
   standalone: true,
-  imports: [FormsModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './generatedResults.html',
-  styleUrl: './generatedResults.css'
+  styleUrls: ['./generatedResults.css'],
 })
 export class GeneratedResults implements OnInit {
   competitionLoading = signal(false);
   competitions = signal<CompetitionOption[]>([]);
+  seasonLoading = signal(false);
+  seasons = signal<SeasonOption[]>([]);
+  backendUnavailable = signal(false);
   selectedCompetitionId = signal('');
   selectedSeason = signal(this.getDefaultSeason());
 
@@ -68,8 +73,8 @@ export class GeneratedResults implements OnInit {
   error = signal<string | null>(null);
   success = signal<string | null>(null);
 
-  hasSelection = computed(() =>
-    this.selectedCompetitionId().length > 0 && this.selectedSeason().length > 0
+  hasSelection = computed(
+    () => this.selectedCompetitionId().length > 0 && this.selectedSeason().length > 0,
   );
 
   versionGroups = computed<VersionGroup[]>(() => {
@@ -83,7 +88,7 @@ export class GeneratedResults implements OnInit {
           version,
           versionNumber: this.toVersionNumber(version),
           xlsxFile: null,
-          zipFile: null
+          zipFile: null,
         });
       }
       const group = groupMap.get(version)!;
@@ -94,12 +99,12 @@ export class GeneratedResults implements OnInit {
       }
     }
 
-    return Array.from(groupMap.values())
-      .sort((a, b) => b.versionNumber - a.versionNumber);
+    return Array.from(groupMap.values()).sort((a, b) => b.versionNumber - a.versionNumber);
   });
 
   private readonly http = inject(HttpClient);
   private readonly competitionService = inject(CompetitionCatalog);
+  private readonly seasonService = inject(SeasonCatalog);
   private readonly destroyRef = inject(DestroyRef);
   readonly appState = inject(AppState);
 
@@ -112,18 +117,21 @@ export class GeneratedResults implements OnInit {
       this.selectedSeason.set(this.appState.selectedSeason());
     }
     this.subscribeToCompetitionService();
+    this.subscribeToSeasonService();
   }
 
   private subscribeToCompetitionService(): void {
     this.competitionService.competitions$
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(competitions => {
-        const enabledCompetitions = competitions.filter(competition => competition.enabled);
+      .subscribe((competitions) => {
+        const enabledCompetitions = competitions.filter((competition) => competition.enabled);
         this.competitions.set(enabledCompetitions);
 
         if (
           this.selectedCompetitionId() &&
-          !enabledCompetitions.some(competition => competition.id === this.selectedCompetitionId())
+          !enabledCompetitions.some(
+            (competition) => competition.id === this.selectedCompetitionId(),
+          )
         ) {
           this.selectedCompetitionId.set('');
           this.generatedFiles.set([]);
@@ -136,24 +144,40 @@ export class GeneratedResults implements OnInit {
 
     this.competitionService.loading$
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(loading => {
+      .subscribe((loading) => {
         this.competitionLoading.set(loading);
       });
 
     this.competitionService.error$
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(serviceError => {
-        if (serviceError) {
-          this.error.set(serviceError);
-        }
+      .subscribe((serviceError) => {
+        this.handleServiceError(serviceError);
+      });
+  }
+
+  private subscribeToSeasonService(): void {
+    this.seasonService.seasons$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((seasons) => {
+      this.seasons.set(seasons.filter((season) => season.enabled));
+      this.ensureValidSelectedSeason();
+    });
+
+    this.seasonService.loading$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((loading) => {
+      this.seasonLoading.set(loading);
+    });
+
+    this.seasonService.error$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((serviceError) => {
+        this.handleServiceError(serviceError);
       });
   }
 
   async refreshCompetitions(): Promise<void> {
     try {
-      await this.competitionService.refresh();
+      await Promise.all([this.competitionService.refresh(), this.seasonService.refresh()]);
+      this.clearBackendUnavailableState();
       this.error.set(null);
-      this.success.set('Competitions updated successfully');
+      this.success.set('Competitions and seasons updated successfully');
 
       if (this.selectedCompetitionId() && this.selectedSeason()) {
         await this.loadGeneratedFiles();
@@ -205,7 +229,9 @@ export class GeneratedResults implements OnInit {
     try {
       for (const endpoint of endpoints) {
         try {
-          const response = await firstValueFrom(this.http.get<GeneratedArtifactListResponse>(endpoint));
+          const response = await firstValueFrom(
+            this.http.get<GeneratedArtifactListResponse>(endpoint),
+          );
           const normalized = this.normalizeGeneratedFileResponse(response);
           successfulEndpointCount++;
           collectedFiles.push(...normalized);
@@ -224,7 +250,11 @@ export class GeneratedResults implements OnInit {
       const merged = this.mergeGeneratedFiles(collectedFiles);
       this.generatedFiles.set(merged);
     } catch (e: any) {
-      this.error.set(e?.error?.message || e?.message || 'Error loading generated files.');
+      if (this.isBackendUnavailableError(e)) {
+        this.enterBackendUnavailableState();
+      } else {
+        this.error.set(this.extractErrorMessage(e, 'Error loading generated files.'));
+      }
       this.generatedFiles.set([]);
     } finally {
       this.generatedFilesLoading.set(false);
@@ -261,10 +291,12 @@ export class GeneratedResults implements OnInit {
     try {
       for (const endpoint of Array.from(new Set(endpoints))) {
         try {
-          const response = await firstValueFrom(this.http.get(endpoint, {
-            responseType: 'blob',
-            observe: 'response'
-          }));
+          const response = await firstValueFrom(
+            this.http.get(endpoint, {
+              responseType: 'blob',
+              observe: 'response',
+            }),
+          );
 
           if (!response || response.status !== 200 || !response.body || response.body.size === 0) {
             continue;
@@ -296,8 +328,12 @@ export class GeneratedResults implements OnInit {
 
       throw new Error(`Generated file not found on backend: ${file.fileName}`);
     } catch (e: any) {
-      this.error.set(e?.error?.message || e?.message || 'Error downloading generated file.');
-      this.success.set(null);
+      if (this.isBackendUnavailableError(e)) {
+        this.enterBackendUnavailableState();
+      } else {
+        this.error.set(this.extractErrorMessage(e, 'Error downloading generated file.'));
+        this.success.set(null);
+      }
     } finally {
       this.downloadingFileName.set(null);
     }
@@ -332,16 +368,20 @@ export class GeneratedResults implements OnInit {
     return date.toLocaleString();
   }
 
-  private normalizeGeneratedFileResponse(response: GeneratedArtifactListResponse): GeneratedArtifactItem[] {
+  private normalizeGeneratedFileResponse(
+    response: GeneratedArtifactListResponse,
+  ): GeneratedArtifactItem[] {
     const source = this.extractListSource(response);
     return source
-      .map(item => this.normalizeGeneratedItem(item))
+      .map((item) => this.normalizeGeneratedItem(item))
       .filter((item): item is GeneratedArtifactItem => item !== null)
-      .filter(item => this.isSupportedGeneratedArtifact(item.fileName))
+      .filter((item) => this.isSupportedGeneratedArtifact(item.fileName))
       .sort((a, b) => this.compareArtifacts(a, b));
   }
 
-  private extractListSource(response: GeneratedArtifactListResponse): Array<GeneratedArtifactRaw | string> {
+  private extractListSource(
+    response: GeneratedArtifactListResponse,
+  ): Array<GeneratedArtifactRaw | string> {
     if (Array.isArray(response)) {
       return response as Array<GeneratedArtifactRaw | string>;
     }
@@ -379,7 +419,167 @@ export class GeneratedResults implements OnInit {
     return `${startYear}-${endYearTwoDigits}`;
   }
 
-  private normalizeGeneratedItem(item: GeneratedArtifactRaw | string): GeneratedArtifactItem | null {
+  private ensureValidSelectedSeason(): void {
+    const seasons = this.seasons();
+    if (seasons.length === 0) {
+      return;
+    }
+
+    const currentSelectedSeason = this.selectedSeason();
+    const currentSeasonIsValid = seasons.some((season) => season.id === currentSelectedSeason);
+    if (currentSeasonIsValid) {
+      if (this.selectedCompetitionId() && this.selectedSeason()) {
+        this.loadGeneratedFiles();
+      }
+      return;
+    }
+
+    const preferredSeason =
+      this.seasonService.getPreferredSeason(currentSelectedSeason) || this.getDefaultSeason();
+
+    this.selectedSeason.set(preferredSeason);
+    this.appState.setSeason(preferredSeason);
+
+    if (this.selectedCompetitionId() && preferredSeason) {
+      this.loadGeneratedFiles();
+    }
+  }
+
+  private handleServiceError(serviceError: string | null): void {
+    if (!serviceError) {
+      return;
+    }
+
+    if (this.isBackendUnavailableMessage(serviceError)) {
+      this.enterBackendUnavailableState();
+      return;
+    }
+
+    if (!this.backendUnavailable()) {
+      this.error.set(serviceError);
+    }
+  }
+
+  private enterBackendUnavailableState(): void {
+    this.backendUnavailable.set(true);
+    this.generatedFiles.set([]);
+    this.downloadingFileName.set(null);
+    this.error.set(null);
+    this.success.set(null);
+  }
+
+  private clearBackendUnavailableState(): void {
+    this.backendUnavailable.set(false);
+  }
+
+  private isBackendUnavailableError(error: any): boolean {
+    const status = Number(error?.status);
+    if (status === 0 || status === 502 || status === 503 || status === 504) {
+      return true;
+    }
+
+    if (status === 500) {
+      const payload = this.buildErrorPayload(error);
+      const unavailableMarkers = [
+        'error occurred while trying to proxy',
+        'proxy error',
+        'unable to proxy',
+        'econnrefused',
+        'connection refused',
+        'failed to connect',
+        'connect error',
+        'socket hang up',
+        'enotfound',
+        'eai_again',
+        'etimedout',
+        'upstream connect error',
+        'actively refused',
+      ];
+
+      if (unavailableMarkers.some((marker) => payload.includes(marker))) {
+        return true;
+      }
+    }
+
+    return this.isBackendUnavailableMessage(this.extractErrorMessage(error));
+  }
+
+  private isBackendUnavailableMessage(message: string | null | undefined): boolean {
+    if (!message) {
+      return false;
+    }
+
+    const normalized = message.toLowerCase();
+    return (
+      normalized.includes('backend not available') ||
+      normalized.includes('backend internal server error') ||
+      normalized.includes('error occurred while trying to proxy') ||
+      normalized.includes('proxy error') ||
+      normalized.includes('unable to proxy') ||
+      normalized.includes('econnrefused') ||
+      normalized.includes('connection refused') ||
+      normalized.includes('failed to connect') ||
+      normalized.includes('upstream connect error') ||
+      normalized.includes('actively refused')
+    );
+  }
+
+  private extractErrorMessage(error: any, fallback = 'Unknown error'): string {
+    if (typeof error?.error?.message === 'string' && error.error.message.length > 0) {
+      return error.error.message;
+    }
+    if (typeof error?.message === 'string' && error.message.length > 0) {
+      return error.message;
+    }
+    return fallback;
+  }
+
+  private buildErrorPayload(error: any): string {
+    const parts = [
+      typeof error?.message === 'string' ? error.message : '',
+      typeof error?.statusText === 'string' ? error.statusText : '',
+      this.stringifyErrorBody(error?.error),
+    ];
+
+    return parts
+      .filter((part) => part.length > 0)
+      .join(' ')
+      .toLowerCase();
+  }
+
+  private stringifyErrorBody(value: unknown): string {
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    if (value === null || value === undefined) {
+      return '';
+    }
+
+    if (typeof value === 'object') {
+      const obj = value as Record<string, unknown>;
+      const candidateParts = [
+        typeof obj['message'] === 'string' ? obj['message'] : '',
+        typeof obj['error'] === 'string' ? obj['error'] : '',
+        typeof obj['detail'] === 'string' ? obj['detail'] : '',
+      ].filter((part) => part.length > 0);
+
+      let json = '';
+      try {
+        json = JSON.stringify(value);
+      } catch {
+        json = '';
+      }
+
+      return [...candidateParts, json].filter((part) => part.length > 0).join(' ');
+    }
+
+    return String(value);
+  }
+
+  private normalizeGeneratedItem(
+    item: GeneratedArtifactRaw | string,
+  ): GeneratedArtifactItem | null {
     const fileName = this.resolveFileName(item);
     if (!fileName) {
       return null;
@@ -395,7 +595,7 @@ export class GeneratedResults implements OnInit {
       size: typeof objectItem?.size === 'number' ? objectItem.size : null,
       lastModified: typeof objectItem?.lastModified === 'string' ? objectItem.lastModified : null,
       artifactType,
-      downloadId: this.resolveDownloadId(objectItem)
+      downloadId: this.resolveDownloadId(objectItem),
     };
   }
 
@@ -404,9 +604,12 @@ export class GeneratedResults implements OnInit {
       return item.trim();
     }
 
-    const fileName = typeof item?.fileName === 'string'
-      ? item.fileName
-      : (typeof item?.name === 'string' ? item.name : '');
+    const fileName =
+      typeof item?.fileName === 'string'
+        ? item.fileName
+        : typeof item?.name === 'string'
+          ? item.name
+          : '';
 
     return fileName.trim();
   }
@@ -416,9 +619,12 @@ export class GeneratedResults implements OnInit {
       return null;
     }
 
-    const candidate = typeof item.downloadId === 'string' && item.downloadId.trim().length > 0
-      ? item.downloadId
-      : (typeof item.id === 'string' && item.id.trim().length > 0 ? item.id : '');
+    const candidate =
+      typeof item.downloadId === 'string' && item.downloadId.trim().length > 0
+        ? item.downloadId
+        : typeof item.id === 'string' && item.id.trim().length > 0
+          ? item.id
+          : '';
 
     return candidate ? candidate.trim() : null;
   }
@@ -485,11 +691,7 @@ export class GeneratedResults implements OnInit {
     const season = encodeURIComponent(this.selectedSeason());
     const base = `/api/calendar/competitions/${competitionId}/seasons/${season}`;
 
-    return [
-      `${base}/generated-full-calendars`,
-      `${base}/generated-results`,
-      `${base}/results`
-    ];
+    return [`${base}/generated-full-calendars`, `${base}/generated-results`, `${base}/results`];
   }
 
   private mergeGeneratedFiles(files: GeneratedArtifactItem[]): GeneratedArtifactItem[] {
@@ -511,7 +713,10 @@ export class GeneratedResults implements OnInit {
     return Array.from(byKey.values()).sort((a, b) => this.compareArtifacts(a, b));
   }
 
-  private shouldReplaceArtifact(current: GeneratedArtifactItem, candidate: GeneratedArtifactItem): boolean {
+  private shouldReplaceArtifact(
+    current: GeneratedArtifactItem,
+    candidate: GeneratedArtifactItem,
+  ): boolean {
     // Prefer shorter folder path (main version directory vs nested subdirectory)
     const currentFolderDepth = (current.folder || '').split('/').filter(Boolean).length;
     const candidateFolderDepth = (candidate.folder || '').split('/').filter(Boolean).length;

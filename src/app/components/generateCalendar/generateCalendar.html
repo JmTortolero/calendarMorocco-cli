@@ -1,14 +1,15 @@
 <div class="upload-container">
+  <h2>Generate Calendar</h2>
   <div class="form-group">
     <div class="config-header">
-      <label for="configSelect">Competition: (League)</label>
+      <label for="configSelect">Competition</label>
       <button
         type="button"
         (click)="refreshConfig()"
-        [disabled]="competitionLoading()"
+        [disabled]="competitionLoading() || seasonLoading()"
         class="refresh-config-btn"
-        title="Refresh competitions">
-        @if (competitionLoading()) {
+        title="Refresh competitions and seasons">
+        @if (competitionLoading() || seasonLoading()) {
           Refreshing...
         } @else {
           Refresh
@@ -21,14 +22,16 @@
       [ngModel]="selectedCompetitionId()"
       (ngModelChange)="onCompetitionChange($event)"
       class="form-control"
+      title="Select competition"
+      aria-label="Select competition"
       [disabled]="competitionLoading() || competitions().length === 0">
       <option value="">
         @if (competitionLoading()) {
           Loading competitions...
         } @else if (competitions().length === 0) {
-          No options available
+          No competitions available
         } @else {
-          Select a league
+          Select a competition
         }
       </option>
       @for (competition of competitions(); track competition.id) {
@@ -40,15 +43,30 @@
   </div>
 
   <div class="form-group">
-    <label for="seasonInput">Season (example: 2025-26)</label>
-    <input
-      id="seasonInput"
-      type="text"
+    <label for="seasonSelect">Season</label>
+    <select
+      id="seasonSelect"
       [ngModel]="selectedSeason()"
       (ngModelChange)="onSeasonChange($event)"
       class="form-control"
-      placeholder="2025-26"
-      [disabled]="loading() || competitionLoading()">
+      title="Select season"
+      aria-label="Select season"
+      [disabled]="loading() || competitionLoading() || seasonLoading() || seasons().length === 0">
+      <option value="">
+        @if (seasonLoading()) {
+          Loading seasons...
+        } @else if (seasons().length === 0) {
+          No seasons available
+        } @else {
+          Select a season
+        }
+      </option>
+      @for (season of seasons(); track season.id) {
+        <option [value]="season.id">
+          {{ season.label }}
+        </option>
+      }
+    </select>
   </div>
 
   <div class="form-group">
@@ -58,6 +76,8 @@
       [ngModel]="selectedExcelFileName()"
       (ngModelChange)="onExcelFileFromStorageChange($event)"
       class="form-control"
+      title="Select Excel file from storage"
+      aria-label="Select Excel file from storage"
       [disabled]="excelFilesLoading() || !selectedCompetitionId() || !selectedSeason() || excelFiles().length === 0">
       <option value="">
         @if (excelFilesLoading()) {
@@ -88,6 +108,8 @@
       [ngModel]="lastRoundToAssign() ?? ''"
       (ngModelChange)="onLastRoundToAssignChange($event)"
       class="form-control"
+      title="Last round to assign"
+      aria-label="Last round to assign"
       [disabled]="loading() || competitionLoading()">
     @if (lastRoundToAssign() === null) {
       <small class="help-text">Set the round number to assign (integer greater than 0)</small>
@@ -100,9 +122,13 @@
   <button
     (click)="generateCalendar()"
     [disabled]="!canGenerate()"
+    [attr.aria-busy]="loading()"
     class="generate-button">
     @if (loading()) {
-      {{ 'calendar.loading' | translate }}
+      <span class="button-content">
+        <span class="button-spinner" aria-hidden="true"></span>
+        {{ 'calendar.loading' | translate }}
+      </span>
     } @else {
       {{ 'calendar.generateButton' | translate }}
     }
@@ -130,6 +156,8 @@
       [value]="generationLogsText()"
       readonly
       rows="12"
+      title="Generation logs"
+      aria-label="Generation logs"
       placeholder="Generation logs will appear here after running calendar generation...">
     </textarea>
 
@@ -155,9 +183,19 @@
         Loading Excel files...
       </small>
     }
+    @if (seasonLoading()) {
+      <small class="info-text">
+        Loading seasons...
+      </small>
+    }
     @if (!competitionLoading() && competitions().length === 0) {
       <small class="warning-text">
         Cannot generate calendars without valid competitions
+      </small>
+    }
+    @if (!seasonLoading() && seasons().length === 0) {
+      <small class="warning-text">
+        Cannot generate calendars without valid seasons
       </small>
     }
     @if (!excelFilesLoading() && selectedCompetitionId() && selectedSeason() && excelFiles().length === 0) {

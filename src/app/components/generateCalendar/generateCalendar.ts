@@ -4,8 +4,9 @@ import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
-import { AppState, CompetitionCatalog, Translation } from '../../core/services';
+import { AppState, CompetitionCatalog, SeasonCatalog, Translation } from '../../core/services';
 import { CompetitionOption } from '../../core/services/competition';
+import { SeasonOption } from '../../core/services/season';
 
 interface ExcelFileItem {
   fileName: string;
@@ -32,7 +33,7 @@ type ExcelListResponse =
   standalone: true,
   imports: [FormsModule, TranslatePipe],
   templateUrl: './generateCalendar.html',
-  styleUrl: './generateCalendar.css'
+  styleUrls: ['./generateCalendar.css']
 })
 export class GenerateCalendar implements OnInit {
   loading = signal(false);
@@ -45,6 +46,8 @@ export class GenerateCalendar implements OnInit {
 
   competitionLoading = signal(false);
   competitions = signal<CompetitionOption[]>([]);
+  seasonLoading = signal(false);
+  seasons = signal<SeasonOption[]>([]);
   selectedCompetitionId = signal('');
   selectedSeason = signal(this.getDefaultSeason());
   excelFilesLoading = signal(false);
@@ -54,6 +57,7 @@ export class GenerateCalendar implements OnInit {
   lastRoundToAssign = signal<number | null>(null);
 
   hasCompetitions = computed(() => this.competitions().length > 0);
+  hasSeasons = computed(() => this.seasons().length > 0);
   hasExcelFiles = computed(() => this.excelFiles().length > 0);
   hasValidLastRoundToAssign = computed(() => {
     const value = this.lastRoundToAssign();
@@ -67,11 +71,13 @@ export class GenerateCalendar implements OnInit {
   canGenerate = computed(() =>
     !this.loading() &&
     !this.competitionLoading() &&
+    !this.seasonLoading() &&
     !this.excelFilesLoading() &&
     this.selectedCompetitionId().length > 0 &&
     this.selectedSeason().length > 0 &&
     this.selectedExcelFileName().length > 0 &&
     this.hasCompetitions() &&
+    this.hasSeasons() &&
     this.hasExcelFiles() &&
     this.hasValidLastRoundToAssign()
   );
@@ -82,6 +88,7 @@ export class GenerateCalendar implements OnInit {
       selectedSeason: this.selectedSeason(),
       selectedExcelFileName: this.selectedExcelFileName(),
       competitionsCount: this.competitions().length,
+      seasonsCount: this.seasons().length,
       excelFilesCount: this.excelFiles().length,
       lastRoundToAssign: this.lastRoundToAssign(),
       lastRoundValid: this.hasValidLastRoundToAssign(),
@@ -94,6 +101,7 @@ export class GenerateCalendar implements OnInit {
   private readonly translationService = inject(Translation);
   private readonly http = inject(HttpClient);
   private readonly competitionService = inject(CompetitionCatalog);
+  private readonly seasonService = inject(SeasonCatalog);
   private readonly destroyRef = inject(DestroyRef);
   readonly appState = inject(AppState);
 
@@ -106,6 +114,7 @@ export class GenerateCalendar implements OnInit {
       this.selectedSeason.set(this.appState.selectedSeason());
     }
     this.subscribeToCompetitionService();
+    this.subscribeToSeasonService();
   }
 
   private subscribeToCompetitionService(): void {
@@ -144,11 +153,37 @@ export class GenerateCalendar implements OnInit {
       });
   }
 
+  private subscribeToSeasonService(): void {
+    this.seasonService.seasons$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(seasons => {
+        this.seasons.set(seasons.filter(season => season.enabled));
+        this.ensureValidSelectedSeason();
+      });
+
+    this.seasonService.loading$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(loading => {
+        this.seasonLoading.set(loading);
+      });
+
+    this.seasonService.error$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(serviceError => {
+        if (serviceError) {
+          this.error.set(serviceError);
+        }
+      });
+  }
+
   async refreshConfig(): Promise<void> {
     try {
-      await this.competitionService.refresh();
+      await Promise.all([
+        this.competitionService.refresh(),
+        this.seasonService.refresh()
+      ]);
       this.error.set(null);
-      this.success.set('Competitions updated successfully');
+      this.success.set('Competitions and seasons updated successfully');
 
       if (this.selectedCompetitionId() && this.selectedSeason()) {
         await this.loadExcelFiles();
@@ -215,14 +250,15 @@ export class GenerateCalendar implements OnInit {
       const url = `/api/calendar/competitions/${encodeURIComponent(this.selectedCompetitionId())}/seasons/${encodeURIComponent(this.selectedSeason())}/excels`;
       const response = await firstValueFrom(this.http.get<ExcelListResponse>(url));
       const files = this.normalizeExcelListResponse(response);
+      const currentSelection = this.selectedExcelFileName();
+      const currentSelectionExists = files.some(file => file.fileName === currentSelection);
+      const nextSelection = currentSelectionExists ? currentSelection : (files[0]?.fileName ?? '');
 
       this.excelFiles.set(files);
 
-      if (
-        this.selectedExcelFileName() &&
-        !files.some(file => file.fileName === this.selectedExcelFileName())
-      ) {
-        this.selectedExcelFileName.set('');
+      if (nextSelection !== currentSelection) {
+        this.selectedExcelFileName.set(nextSelection);
+        this.clearGenerationLogsState();
       }
     } catch (e: any) {
       if (e?.status === 404) {
@@ -419,7 +455,14 @@ export class GenerateCalendar implements OnInit {
     return source
       .map(item => this.normalizeExcelListItem(item))
       .filter((item): item is ExcelFileItem => item !== null)
-      .sort((a, b) => a.fileName.localeCompare(b.fileName));
+      .filter(item => this.isVersionedExcelFile(item.fileName))
+      .sort((a, b) => {
+        const versionDifference = this.extractVersionNumber(b.fileName) - this.extractVersionNumber(a.fileName);
+        if (versionDifference !== 0) {
+          return versionDifference;
+        }
+        return a.fileName.localeCompare(b.fileName);
+      });
   }
 
   private extractListSource(response: ExcelListResponse): Array<ExcelFileItem | string> {
@@ -462,6 +505,15 @@ export class GenerateCalendar implements OnInit {
     };
   }
 
+  private isVersionedExcelFile(fileName: string): boolean {
+    return /-v\d+\.xlsx$/i.test((fileName ?? '').trim());
+  }
+
+  private extractVersionNumber(fileName: string): number {
+    const match = (fileName ?? '').trim().match(/-v(\d+)\.xlsx$/i);
+    return match ? Number(match[1]) : -1;
+  }
+
   private getDefaultSeason(): string {
     const now = new Date();
     const month = now.getMonth();
@@ -470,6 +522,38 @@ export class GenerateCalendar implements OnInit {
     const endYearTwoDigits = String((startYear + 1) % 100).padStart(2, '0');
 
     return `${startYear}-${endYearTwoDigits}`;
+  }
+
+  private ensureValidSelectedSeason(): void {
+    const seasons = this.seasons();
+    if (seasons.length === 0) {
+      return;
+    }
+
+    const currentSelectedSeason = this.selectedSeason();
+    const currentSeasonIsValid = seasons.some(season => season.id === currentSelectedSeason);
+    if (currentSeasonIsValid) {
+      if (this.selectedCompetitionId() && this.selectedSeason()) {
+        this.loadExcelFiles();
+      }
+      return;
+    }
+
+    const preferredSeason = this.seasonService.getPreferredSeason(currentSelectedSeason) || this.getDefaultSeason();
+    const seasonChanged = preferredSeason !== currentSelectedSeason;
+
+    this.selectedSeason.set(preferredSeason);
+    this.appState.setSeason(preferredSeason);
+    this.excelFiles.set([]);
+    this.selectedExcelFileName.set('');
+
+    if (seasonChanged) {
+      this.clearGenerationLogsState();
+    }
+
+    if (this.selectedCompetitionId() && preferredSeason) {
+      this.loadExcelFiles();
+    }
   }
 
   private parseAndSanitizeLogs(input: unknown): string[] {

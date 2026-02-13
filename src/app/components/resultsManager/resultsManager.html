@@ -22,6 +22,8 @@
       [ngModel]="selectedCompetitionId()"
       (ngModelChange)="onCompetitionChange($event)"
       class="form-control"
+      title="Select competition"
+      aria-label="Select competition"
       [disabled]="competitionLoading() || competitions().length === 0">
       <option value="">
         @if (competitionLoading()) {
@@ -49,6 +51,8 @@
       [ngModel]="selectedSeason()"
       (ngModelChange)="onSeasonChange($event)"
       placeholder="2025-26"
+      title="Season"
+      aria-label="Season"
       [disabled]="competitionLoading()">
   </div>
 

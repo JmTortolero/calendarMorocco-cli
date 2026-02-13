@@ -1,27 +1,51 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { RouterOutlet } from '@angular/router';
+import { firstValueFrom, timeout } from 'rxjs';
 import { Header } from './components/header/header';
+import { BackendStatus, CompetitionCatalog, SeasonCatalog } from './core/services';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Header], // 🔥 Angular 21: Removed unused CommonModule
+  imports: [RouterOutlet, Header],
   templateUrl: './app.html',
-  styleUrl: './app.css',
+  styleUrls: ['./app.css'],
   standalone: true,
 })
 export class App implements OnInit {
-  // 🔥 Angular 21: Signals for reactive state
-  backendConnected = signal(false);
-  showLoading = signal(true);
+  private readonly http = inject(HttpClient);
+  private readonly backendStatus = inject(BackendStatus);
+  private readonly competitionCatalog = inject(CompetitionCatalog);
+  private readonly seasonCatalog = inject(SeasonCatalog);
 
-  // 🔥 Angular 21: Computed signals for derived state
-  isReady = computed(() => this.backendConnected() && !this.showLoading());
+  startupChecking = signal(true);
+  readonly backendUnavailable = this.backendStatus.isUnavailable;
 
-  ngOnInit() {
-    // Simulate connection check
-    setTimeout(() => {
-      this.backendConnected.set(true);
-      this.showLoading.set(false);
-    }, 1000);
+  async ngOnInit(): Promise<void> {
+    await this.checkBackendOnStartup();
+  }
+
+  private async checkBackendOnStartup(): Promise<void> {
+    this.startupChecking.set(true);
+
+    try {
+      await firstValueFrom(
+        this.http.get('/actuator/health').pipe(
+          timeout(3000),
+        ),
+      );
+
+      await Promise.all([
+        this.competitionCatalog.loadCompetitions(),
+        this.seasonCatalog.loadSeasons(),
+      ]);
+
+      this.backendStatus.markAvailable();
+    } catch (error: unknown) {
+      console.error('Startup backend check failed', error);
+      this.backendStatus.markUnavailable();
+    } finally {
+      this.startupChecking.set(false);
+    }
   }
 }

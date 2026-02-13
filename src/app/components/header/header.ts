@@ -7,7 +7,7 @@ import { NavSection } from './nav-section/nav-section';
   selector: 'app-header',
   imports: [TitleSection, NavSection],
   templateUrl: './header.html',
-  styleUrl: './header.css',
+  styleUrls: ['./header.css'],
   standalone: true,
 })
 export class Header {}

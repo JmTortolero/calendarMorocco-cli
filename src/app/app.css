@@ -1,2 +1,27 @@
-/* Estilos globales del componente principal */
-/* Los estilos específicos están en sus respectivos componentes */
+.app-status-container {
+  max-width: 860px;
+  margin: 1.25rem auto;
+  padding: 1.5rem;
+}
+
+.app-status-card {
+  padding: 0.85rem 1rem;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #1f2937;
+  font-size: 0.95rem;
+}
+
+.app-status-loading {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.app-status-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+  font-weight: 600;
+}

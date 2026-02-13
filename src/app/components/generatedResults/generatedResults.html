@@ -1,127 +1,148 @@
 <div class="generated-results-container">
   <h2>Generated Results</h2>
 
-  <div class="form-group">
-    <div class="config-header">
-      <label for="competitionSelect">Competition</label>
-      <button
-        type="button"
-        (click)="refreshCompetitions()"
-        [disabled]="competitionLoading()"
-        class="refresh-btn">
-        @if (competitionLoading()) {
-          Refreshing...
-        } @else {
-          Refresh
+  @if (backendUnavailable()) {
+    <div class="system-down">The system is down.</div>
+  } @else {
+    <div class="form-group">
+      <div class="config-header">
+        <label for="competitionSelect">Competition</label>
+        <button
+          type="button"
+          (click)="refreshCompetitions()"
+          [disabled]="competitionLoading() || seasonLoading()"
+          class="refresh-btn">
+          @if (competitionLoading() || seasonLoading()) {
+            Refreshing...
+          } @else {
+            Refresh
+          }
+        </button>
+      </div>
+
+      <select
+        id="competitionSelect"
+        [ngModel]="selectedCompetitionId()"
+        (ngModelChange)="onCompetitionChange($event)"
+        class="form-control"
+        title="Select competition"
+        aria-label="Select competition"
+        [disabled]="competitionLoading() || competitions().length === 0">
+        <option value="">
+          @if (competitionLoading()) {
+            Loading competitions...
+          } @else if (competitions().length === 0) {
+            No competitions available
+          } @else {
+            Select a competition
+          }
+        </option>
+        @for (competition of competitions(); track competition.id) {
+          <option [value]="competition.id">
+            {{ competition.name }}
+          </option>
         }
-      </button>
+      </select>
     </div>
 
-    <select
-      id="competitionSelect"
-      [ngModel]="selectedCompetitionId()"
-      (ngModelChange)="onCompetitionChange($event)"
-      class="form-control"
-      [disabled]="competitionLoading() || competitions().length === 0">
-      <option value="">
-        @if (competitionLoading()) {
-          Loading competitions...
-        } @else if (competitions().length === 0) {
-          No competitions available
-        } @else {
-          Select a competition
-        }
-      </option>
-      @for (competition of competitions(); track competition.id) {
-        <option [value]="competition.id">
-          {{ competition.name }}
+    <div class="form-group">
+      <label for="seasonSelect">Season</label>
+      <select
+        id="seasonSelect"
+        [ngModel]="selectedSeason()"
+        (ngModelChange)="onSeasonChange($event)"
+        class="form-control"
+        title="Select season"
+        aria-label="Select season"
+        [disabled]="competitionLoading() || seasonLoading() || seasons().length === 0">
+        <option value="">
+          @if (seasonLoading()) {
+            Loading seasons...
+          } @else if (seasons().length === 0) {
+            No seasons available
+          } @else {
+            Select a season
+          }
         </option>
-      }
-    </select>
-  </div>
-
-  <div class="form-group">
-    <label for="seasonInput">Season (example: 2025-26)</label>
-    <input
-      id="seasonInput"
-      type="text"
-      class="form-control"
-      [ngModel]="selectedSeason()"
-      (ngModelChange)="onSeasonChange($event)"
-      placeholder="2025-26"
-      [disabled]="competitionLoading()">
-  </div>
-
-  <div class="list-section">
-    <h3>Available Generated Files (fullCalendar + ZIP)</h3>
-
-    @if (generatedFilesLoading()) {
-      <small class="info-text">Loading generated files...</small>
-    } @else if (!hasSelection()) {
-      <small class="info-text">Select competition and season to load generated files.</small>
-    } @else if (versionGroups().length === 0) {
-      <small class="warning-text">No generated fullCalendar or ZIP files found for this competition and season.</small>
-    } @else {
-      <div class="version-list">
-        @for (group of versionGroups(); track group.version) {
-          <div class="version-row">
-            <div class="version-header">
-              <span class="version-badge">{{ group.version }}</span>
-            </div>
-            <div class="version-files">
-              @if (group.xlsxFile; as xlsxFile) {
-                <div class="file-card">
-                  <div class="file-meta">
-                    <strong>{{ xlsxFile.fileName }}</strong>
-                    <span>Type: {{ xlsxFile.artifactType }}</span>
-                    <span>Folder: {{ xlsxFile.folder || '-' }}</span>
-                    <span>{{ formatBytes(xlsxFile.size) }} - {{ formatDate(xlsxFile.lastModified) }}</span>
-                  </div>
-                  <button
-                    type="button"
-                    class="row-download-btn"
-                    (click)="downloadGeneratedFile(xlsxFile)"
-                    [disabled]="downloadingFileName() === xlsxFile.fileName || generatedFilesLoading()">
-                    @if (downloadingFileName() === xlsxFile.fileName) {
-                      Downloading...
-                    } @else {
-                      Download
-                    }
-                  </button>
-                </div>
-              }
-              @if (group.zipFile; as zipFile) {
-                <div class="file-card">
-                  <div class="file-meta">
-                    <strong>{{ zipFile.fileName }}</strong>
-                    <span>Type: {{ zipFile.artifactType }}</span>
-                    <span>Folder: {{ zipFile.folder || '-' }}</span>
-                    <span>{{ formatBytes(zipFile.size) }} - {{ formatDate(zipFile.lastModified) }}</span>
-                  </div>
-                  <button
-                    type="button"
-                    class="row-download-btn zip-btn"
-                    (click)="downloadGeneratedFile(zipFile)"
-                    [disabled]="downloadingFileName() === zipFile.fileName || generatedFilesLoading()">
-                    @if (downloadingFileName() === zipFile.fileName) {
-                      Downloading...
-                    } @else {
-                      Download ZIP
-                    }
-                  </button>
-                </div>
-              }
-            </div>
-          </div>
+        @for (season of seasons(); track season.id) {
+          <option [value]="season.id">
+            {{ season.label }}
+          </option>
         }
-      </div>
-    }
-  </div>
+      </select>
+    </div>
 
-  @if (error()) {
-    <div class="error">{{ error() }}</div>
-  }
-  @if (success()) {
-    <div class="success">{{ success() }}</div>
+    <div class="list-section">
+      <h3>Available Generated Files (fullCalendar + ZIP)</h3>
+
+      @if (generatedFilesLoading()) {
+        <small class="info-text">Loading generated files...</small>
+      } @else if (!hasSelection()) {
+        <small class="info-text">Select competition and season to load generated files.</small>
+      } @else if (versionGroups().length === 0) {
+        <small class="warning-text">No generated fullCalendar or ZIP files found for this competition and season.</small>
+      } @else {
+        <div class="version-list">
+          @for (group of versionGroups(); track group.version) {
+            <div class="version-row">
+              <div class="version-header">
+                <span class="version-badge">{{ group.version }}</span>
+              </div>
+              <div class="version-files">
+                @if (group.xlsxFile; as xlsxFile) {
+                  <div class="file-card">
+                    <div class="file-meta">
+                      <strong>{{ xlsxFile.fileName }}</strong>
+                      <span>Type: {{ xlsxFile.artifactType }}</span>
+                      <span>Folder: {{ xlsxFile.folder || '-' }}</span>
+                      <span>{{ formatBytes(xlsxFile.size) }} - {{ formatDate(xlsxFile.lastModified) }}</span>
+                    </div>
+                    <button
+                      type="button"
+                      class="row-download-btn"
+                      (click)="downloadGeneratedFile(xlsxFile)"
+                      [disabled]="downloadingFileName() === xlsxFile.fileName || generatedFilesLoading()">
+                      @if (downloadingFileName() === xlsxFile.fileName) {
+                        Downloading...
+                      } @else {
+                        Download
+                      }
+                    </button>
+                  </div>
+                }
+                @if (group.zipFile; as zipFile) {
+                  <div class="file-card">
+                    <div class="file-meta">
+                      <strong>{{ zipFile.fileName }}</strong>
+                      <span>Type: {{ zipFile.artifactType }}</span>
+                      <span>Folder: {{ zipFile.folder || '-' }}</span>
+                      <span>{{ formatBytes(zipFile.size) }} - {{ formatDate(zipFile.lastModified) }}</span>
+                    </div>
+                    <button
+                      type="button"
+                      class="row-download-btn zip-btn"
+                      (click)="downloadGeneratedFile(zipFile)"
+                      [disabled]="downloadingFileName() === zipFile.fileName || generatedFilesLoading()">
+                      @if (downloadingFileName() === zipFile.fileName) {
+                        Downloading...
+                      } @else {
+                        Download ZIP
+                      }
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    @if (error()) {
+      <div class="error">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="success">{{ success() }}</div>
+    }
   }
 </div>

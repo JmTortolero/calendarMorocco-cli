@@ -1,7 +1,8 @@
 import { ApplicationConfig } from '@angular/core';
 import { provideRouter, withEnabledBlockingInitialNavigation, withInMemoryScrolling, withRouterConfig } from '@angular/router';
 import { routes } from './app.routes';
-import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
+import { BackendStatusInterceptor } from './core/interceptors/backend-status.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -20,6 +21,11 @@ export const appConfig: ApplicationConfig = {
     // Angular 20 Best Practice: Enhanced HTTP client
     provideHttpClient(
       withInterceptorsFromDi() // Support for legacy HTTP interceptors if needed
-    )
+    ),
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: BackendStatusInterceptor,
+      multi: true
+    }
   ]
 };
